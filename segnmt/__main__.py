@@ -14,7 +14,8 @@ import segnmt.commands
 def main(arguments: Optional[List[str]] = None):
     """Define command line parser and run the specified command."""
     parser = argparse.ArgumentParser(prog='segnmt')
-    subparsers = parser.add_subparsers(dest='command')
+    parser.set_defaults(run=lambda _: parser.print_help())
+    subparsers = parser.add_subparsers()
     commands = segnmt.commands
     for _, command, is_pkg in iter_modules(commands.__path__):
         assert not is_pkg
