@@ -7,7 +7,7 @@ class Encoder(chainer.Chain):
                  vocabulary_size: int,
                  word_embeddings_size: int,
                  hidden_layer_size: int,
-                 num_steps: int
+                 num_steps: int,
                  dropout: float):
         super(Encoder, self).__init__()
         with self.init_scope():
