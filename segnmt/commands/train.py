@@ -1,8 +1,19 @@
-def define_parser(parser):
+import argparse
+from typing import Callable
+from typing import NamedTuple
+
+
+class ConstArguments(NamedTuple):
+    gpu: int
+    run: Callable[[argparse.Namespace], None]
+
+
+def define_parser(parser: argparse.ArgumentParser):
     """Define command specific options."""
-    pass
+    parser.add_argument('-g', '--gpu', type=int, default=-1,
+                        help='GPU ID (-1 means CPU)')
 
 
-def run(args):
+def run(args: argparse.Namespace):
     """Run the command."""
-    pass
+    cargs = ConstArguments(**vars(args))
