@@ -2,6 +2,8 @@ import argparse
 from typing import Callable
 from typing import NamedTuple
 
+from segnmt.train.train import train
+
 
 class ConstArguments(NamedTuple):
     gpu: int
@@ -17,3 +19,4 @@ def define_parser(parser: argparse.ArgumentParser):
 def run(args: argparse.Namespace):
     """Run the command."""
     cargs = ConstArguments(**vars(args))
+    train(cargs)
