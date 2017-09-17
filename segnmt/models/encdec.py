@@ -1,7 +1,7 @@
 import chainer
 
-from segnmt.models.encoders import Encoder
-from segnmt.models.decoders import Decoder
+from segnmt.models.encoder import Encoder
+from segnmt.models.decoder import Decoder
 
 
 class EncoderDecoder(chainer.Chain):
