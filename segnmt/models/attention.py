@@ -1,3 +1,4 @@
+from typing import Callable
 from typing import List
 
 import chainer
@@ -25,7 +26,7 @@ class AttentionModule(chainer.Chain):
 
     def __call__(self,
                  encoded_matrix: Variable,
-                 input_mask: List[Variable]):
+                 input_mask: List[Variable]) -> Callable[[Variable], Variable]:
         minibatch_size, max_sentence_size, encoder_output_size = \
             encoded_matrix.shape
         assert encoder_output_size == self.encoder_output_size
