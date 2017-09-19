@@ -39,8 +39,7 @@ class Decoder(chainer.Chain):
     def __call__(self,
                  encoded_source: Variable,
                  source_masks: List[Variable],
-                 targets: List[Variable]
-    ) -> Variable:
+                 targets: List[Variable]) -> Variable:
         minibatch_size, max_sentence_size, encoder_output_size = \
             encoded_source.shape[0]
         assert encoder_output_size == self.encoder_output_size

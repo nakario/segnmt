@@ -45,7 +45,7 @@ class AttentionModule(chainer.Chain):
         def compute_context(previous_state: Variable) -> Variable:
             state_alignment_factor = self.linear_s(previous_state)
             assert state_alignment_factor.shape == \
-                   (minibatch_size, attention_layer_size)
+                (minibatch_size, attention_layer_size)
             state_alignment_factor_broadcast = F.broadcast_to(
                 F.reshape(
                     state_alignment_factor,
@@ -70,7 +70,7 @@ class AttentionModule(chainer.Chain):
             )
             attention = F.softmax(scores)
             assert attention.shape == (minibatch_size, max_sentence_size)
-            
+
             context = F.reshape(
                 F.batch_matmul(attention, encoded_matrix, transa=True),
                 (minibatch_size, encoder_output_size)
