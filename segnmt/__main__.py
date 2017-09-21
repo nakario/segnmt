@@ -18,7 +18,8 @@ def main(arguments: Optional[List[str]] = None):
     subparsers = parser.add_subparsers()
     commands = segnmt.commands
     for _, command, is_pkg in iter_modules(commands.__path__):
-        assert not is_pkg
+        if is_pkg:
+            continue
         command_parser = subparsers.add_parser(command)
         command_module = import_module(f"{commands.__name__}.{command}")
         command_module.define_parser(command_parser)
