@@ -3,6 +3,7 @@ from typing import List
 import chainer
 import chainer.functions as F
 import chainer.links as L
+from chainer import Parameter
 from chainer import Variable
 
 from segnmt.models.attention import AttentionModule
@@ -31,6 +32,9 @@ class Decoder(chainer.Chain):
             self.attention = AttentionModule(encoder_output_size,
                                              attention_hidden_layer_size,
                                              hidden_layer_size)
+            self.bos_state = Parameter(
+                initializer=self.xp.random.randn((1, hidden_layer_size))
+            )
         self.vocabulary_size = vocabulary_size
         self.word_embeddings_size = word_embeddings_size
         self.hidden_layer_size = hidden_layer_size
@@ -50,8 +54,7 @@ class Decoder(chainer.Chain):
         compute_context = self.attention(encoded_source, source_masks)
         state = Variable(
             F.broadcast_to(
-                self.xp.random.randn((1, self.hidden_layer_size)),
-                (minibatch_size, self.hidden_layer_size)
+                self.bos_state, (minibatch_size, self.hidden_layer_size)
             )
         )
         total_loss = Variable(self.xp.zeros(minibatch_size))
