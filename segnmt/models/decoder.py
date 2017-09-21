@@ -60,8 +60,8 @@ class Decoder(chainer.Chain):
         total_loss = Variable(self.xp.zeros(minibatch_size))
         total_predictions = 0
 
-        for i in range(len(targets)):
-            previous_output = self.embed_id(targets[i])
+        for target in targets:
+            previous_output = self.embed_id(target)
             context = compute_context(state)
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_output, context))
@@ -69,7 +69,7 @@ class Decoder(chainer.Chain):
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
-            loss = F.softmax_cross_entropy(logit, targets[i])
+            loss = F.softmax_cross_entropy(logit, target)
             total_loss += loss * minibatch_size
             total_predictions += minibatch_size
 
