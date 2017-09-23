@@ -1,4 +1,7 @@
+from typing import List
+
 import chainer
+from chainer import Variable
 
 from segnmt.models.encoder import Encoder
 from segnmt.models.decoder import Decoder
@@ -33,4 +36,12 @@ class EncoderDecoder(chainer.Chain):
     def __call__(self, src_batch, src_mask, tgt_batch):
         encoded = self.enc(src_batch, src_mask)
         loss = self.dec(encoded, src_mask, tgt_batch)
+        chainer.report({'loss': loss.data}, self)
         return loss
+
+    def translate(self,
+                  sentences: List[Variable],
+                  masks: List[Variable]) -> List[Variable]:
+        encoded = self.enc(sentences, masks)
+        translated = self.dec.translate(encoded, masks)
+        return translated

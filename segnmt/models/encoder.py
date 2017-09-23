@@ -13,7 +13,7 @@ class Encoder(chainer.Chain):
                  hidden_layer_size: int,
                  num_steps: int,
                  dropout: float,
-                 ignore_label: int = 0):
+                 ignore_label: int = -1):
         super(Encoder, self).__init__()
         with self.init_scope():
             self.embed_id = L.EmbedID(vocabulary_size,
