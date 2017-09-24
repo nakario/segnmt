@@ -112,13 +112,13 @@ def load_data(
 
 
 def train(cargs: ConstArguments):
-    model = EncoderDecoder(cargs.input_vocabulary_size,
-                           cargs.input_word_embeddings_size,
+    model = EncoderDecoder(cargs.source_vocabulary_size,
+                           cargs.source_word_embeddings_size,
                            cargs.encoder_hidden_layer_size,
                            cargs.encoder_num_steps,
                            cargs.encoder_dropout,
-                           cargs.output_vocabulary_size,
-                           cargs.output_word_embeddings_size,
+                           cargs.target_vocabulary_size,
+                           cargs.target_word_embeddings_size,
                            cargs.decoder_hidden_layer_size,
                            cargs.attention_hidden_layer_size,
                            cargs.maxout_layer_size)
