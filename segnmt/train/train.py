@@ -74,8 +74,10 @@ def load_data(
         target: Union[Path, str],
         source_vocab: Dict[str, int],
         target_vocab: Dict[str, int],
-        min_len: int,
-        max_len: int
+        min_src_len: int,
+        max_src_len: int,
+        min_tgt_len: int,
+        max_tgt_len: int
 ) -> List[Tuple[np.ndarray, np.ndarray]]:
     if isinstance(source, str):
         source = Path(source)
@@ -96,9 +98,9 @@ def load_data(
         for s, t in bar(zip(src, tgt), max_value=src_len):
             s_words = s.strip().split()
             t_words = t.strip().split()
-            if len(s_words) < min_len or max_len < len(s_words):
+            if len(s_words) < min_src_len or max_src_len < len(s_words):
                 continue
-            if len(t_words) < min_len or max_len < len(t_words):
+            if len(t_words) < min_tgt_len or max_tgt_len < len(t_words):
                 continue
             s_array = \
                 np.array([source_vocab.get(w, UNK) for w in s_words], 'i')
@@ -127,8 +129,8 @@ def train(cargs: ConstArguments):
     optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
 
-    source_vocab = load_vocab(cargs.source_vocab, cargs.source_vocab_size)
-    target_vocab = load_vocab(cargs.target_vocab, cargs.target_vocab_size)
+    source_vocab = load_vocab(cargs.source_vocab, cargs.source_vocabulary_size)
+    target_vocab = load_vocab(cargs.target_vocab, cargs.target_vocabulary_size)
 
     training_data = load_data(
         cargs.training_source,
@@ -136,7 +138,9 @@ def train(cargs: ConstArguments):
         source_vocab,
         target_vocab,
         cargs.min_source_len,
-        cargs.max_source_len
+        cargs.max_source_len,
+        cargs.min_target_len,
+        cargs.max_target_len
     )
 
     training_iter = chainer.iterators.SerialIterator(training_data,
@@ -161,7 +165,9 @@ def train(cargs: ConstArguments):
             source_vocab,
             target_vocab,
             cargs.min_source_len,
-            cargs.max_source_len
+            cargs.max_source_len,
+            cargs.min_target_len,
+            cargs.max_target_len
         )
 
         validation_size = len(validation_data)
