@@ -101,7 +101,7 @@ class Decoder(chainer.Chain):
                 previous_embedding = self.embed_id(previous_id)
                 context = compute_context(state)
                 assert context.shape == \
-                       (sentence_count, self.encoder_output_size)
+                    (sentence_count, self.encoder_output_size)
                 concatenated = F.concat((previous_embedding, context))
                 state = self.rnn(concatenated)
                 all_concatenated = F.concat((concatenated, state))
