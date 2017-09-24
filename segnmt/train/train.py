@@ -16,9 +16,9 @@ import numpy as np
 from progressbar import ProgressBar
 
 from segnmt.commands.train import ConstArguments
+from segnmt.misc.constants import EOS
 from segnmt.misc.constants import PAD
 from segnmt.misc.constants import UNK
-from segnmt.misc.constants import EOS
 from segnmt.models.encdec import EncoderDecoder
 
 
@@ -50,6 +50,7 @@ def convert(
 
 def load_vocab(vocab_file: Union[Path, str], size: int) -> Dict[str, int]:
     """Create a vocabulary from a file.
+
     The file specified by `vocab` must be contain one word per line.
     """
 
@@ -171,7 +172,7 @@ def train(cargs: ConstArguments):
         logger.info(f'Validation data: {validation_size}')
 
         @chainer.training.make_extension(trigger=(200, 'iteration'))
-        def translate(trainer):
+        def translate(_):
             data = validation_data[model.xp.random.choice(validation_size)]
             source, mask, target = convert([data], cargs.gpu)
             result = F.separate(model.translate(source, mask)[0], axis=0)
