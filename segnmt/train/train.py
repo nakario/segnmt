@@ -173,8 +173,8 @@ def train(cargs: ConstArguments):
         @chainer.training.make_extension(trigger=(200, 'iteration'))
         def translate(trainer):
             data = validation_data[model.xp.random.choice(validation_size)]
-            source, _, target = convert([data], cargs.gpu)
-            result = model.translate(source)[0]
+            source, mask, target = convert([data], cargs.gpu)
+            result = F.separate(model.translate(source, mask)[0], axis=0)
 
             source_sentence = ' '.join([source_word[x] for x in source])
             target_sentence = ' '.join([target_word[y] for y in target])
