@@ -97,7 +97,7 @@ class Decoder(chainer.Chain):
             previous_id = self.xp.full((sentence_count,), EOS, 'i')
             result = []
 
-            for i in range(max_length):
+            for _ in range(max_length):
                 previous_embedding = self.embed_id(previous_id)
                 context = compute_context(state)
                 assert context.shape == \
