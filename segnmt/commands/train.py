@@ -85,8 +85,6 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--max-target-len', type=int, default=50,
                         help='')
-    parser.add_argument('-g', '--gpu', type=int, default=-1,
-                        help='GPU ID (-1 means CPU)')
 
 
 def run(args: argparse.Namespace):
