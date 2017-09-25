@@ -1,43 +1,13 @@
 import argparse
-from typing import Callable
-from typing import NamedTuple
-from typing import Optional
 
 from segnmt.train.train import train
 
 
-class ConstArguments(NamedTuple):
-    # Encoder-Decoder arguments
-    source_vocabulary_size: int
-    source_word_embeddings_size: int
-    encoder_hidden_layer_size: int
-    encoder_num_steps: int
-    encoder_dropout: float
-    target_vocabulary_size: int
-    target_word_embeddings_size: int
-    decoder_hidden_layer_size: int
-    attention_hidden_layer_size: int
-    maxout_layer_size: int
-
-    gpu: int
-    minibatch_size: int
-    epoch: int
-    source_vocab: str
-    target_vocab: str
-    training_source: str
-    training_target: str
-    validation_source: Optional[str]
-    validation_target: Optional[str]
-    min_source_len: int
-    max_source_len: int
-    min_target_len: int
-    max_target_len: int
-
-    run: Callable[[argparse.Namespace], None]
-
-
 def define_parser(parser: argparse.ArgumentParser):
-    """Define command specific options."""
+    """Define command specific options.
+
+    See `segnmt.train.train.ConstArguments`
+    """
     parser.add_argument('--source-vocabulary-size', type=int, default=40000,
                         help='The number of words of source language')
     parser.add_argument('--source-word-embeddings-size', type=int, default=640,
@@ -89,5 +59,4 @@ def define_parser(parser: argparse.ArgumentParser):
 
 def run(args: argparse.Namespace):
     """Run the command."""
-    cargs = ConstArguments(**vars(args))
-    train(cargs)
+    train(args)

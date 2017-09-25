@@ -1,7 +1,10 @@
+import argparse
 from logging import getLogger
 from pathlib import Path
+from typing import Callable
 from typing import Dict
 from typing import List
+from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -15,7 +18,6 @@ from chainer import Variable
 import numpy as np
 from progressbar import ProgressBar
 
-from segnmt.commands.train import ConstArguments
 from segnmt.misc.constants import EOS
 from segnmt.misc.constants import PAD
 from segnmt.misc.constants import UNK
@@ -23,6 +25,36 @@ from segnmt.models.encdec import EncoderDecoder
 
 
 logger = getLogger(__name__)
+
+
+class ConstArguments(NamedTuple):
+    # Encoder-Decoder arguments
+    source_vocabulary_size: int
+    source_word_embeddings_size: int
+    encoder_hidden_layer_size: int
+    encoder_num_steps: int
+    encoder_dropout: float
+    target_vocabulary_size: int
+    target_word_embeddings_size: int
+    decoder_hidden_layer_size: int
+    attention_hidden_layer_size: int
+    maxout_layer_size: int
+
+    gpu: int
+    minibatch_size: int
+    epoch: int
+    source_vocab: str
+    target_vocab: str
+    training_source: str
+    training_target: str
+    validation_source: Optional[str]
+    validation_target: Optional[str]
+    min_source_len: int
+    max_source_len: int
+    min_target_len: int
+    max_target_len: int
+
+    run: Callable[[argparse.Namespace], None]
 
 
 def convert(
@@ -111,7 +143,8 @@ def load_data(
     return data
 
 
-def train(cargs: ConstArguments):
+def train(args: argparse.Namespace):
+    cargs = ConstArguments(**vars(args))
     model = EncoderDecoder(cargs.source_vocabulary_size,
                            cargs.source_word_embeddings_size,
                            cargs.encoder_hidden_layer_size,
