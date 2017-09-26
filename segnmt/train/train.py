@@ -216,7 +216,13 @@ def train(args: argparse.Namespace):
         def translate(_):
             data = validation_data[np.random.choice(validation_size)]
             source, mask, target = convert([data], cargs.gpu)
-            result = F.separate(F.reshape(model.translate(source, mask)[0], (1, -1)), axis=0)
+            result = F.separate(
+                F.reshape(
+                    model.translate(source, mask)[0],
+                    (1, -1)
+                ),
+                axis=0
+            )
 
             source_sentence = ' '.join(
                 [source_word[int(word)] for word in source[0].data]
