@@ -214,18 +214,18 @@ def train(args: argparse.Namespace):
 
         @chainer.training.make_extension(trigger=(200, 'iteration'))
         def translate(_):
-            data = validation_data[model.xp.random.choice(validation_size)]
+            data = validation_data[np.random.choice(validation_size)]
             source, mask, target = convert([data], cargs.gpu)
             result = F.separate(F.reshape(model.translate(source, mask)[0], (1, -1)), axis=0)
 
             source_sentence = ' '.join(
-                [source_word[word] for sentence in source for word in sentence.data]
+                [source_word[int(word)] for word in source[0].data]
             )
             target_sentence = ' '.join(
-                [target_word[word] for sentence in target for word in sentence.data]
+                [target_word[int(word)] for word in target[0].data]
             )
             result_sentence = ' '.join(
-                [target_word[word] for sentence in result for word in sentence.data]
+                [target_word[int(word)] for word in result[0].data]
             )
             logger.info('# source : ' + source_sentence)
             logger.info('# result : ' + result_sentence)

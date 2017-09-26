@@ -5,6 +5,7 @@ import chainer.functions as F
 import chainer.links as L
 from chainer import Parameter
 from chainer import Variable
+import numpy as np
 
 from segnmt.misc.constants import EOS
 from segnmt.models.attention import AttentionModule
@@ -115,7 +116,7 @@ class Decoder(chainer.Chain):
             output_sentences = []
             for output in outputs:
                 assert output.shape == (max_length,)
-                indexes = self.xp.argwhere(output.data == EOS)
+                indexes = np.argwhere(output.data == EOS)
                 if len(indexes) > 0:
                     output = output[:indexes[0, 0]]
                 output_sentences.append(output)
