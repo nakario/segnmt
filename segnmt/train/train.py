@@ -187,15 +187,15 @@ def train(args: argparse.Namespace):
     updater = training.StandardUpdater(
         training_iter, optimizer, converter=convert, device=cargs.gpu)
     trainer = training.Trainer(updater, (cargs.epoch, 'epoch'))
-    trainer.extend(extensions.LogReport(trigger=(200, 'iteration')))
+    trainer.extend(extensions.LogReport(trigger=(10, 'iteration')))
     trainer.extend(
         extensions.PrintReport(
             ['epoch', 'iteration', 'main/loss', 'validation/main/loss',
              'elapsed_time']
         ),
-        trigger=(200, 'iteration')
+        trigger=(10, 'iteration')
     )
-    trainer.extend(extensions.snapshot(), trigger=(200, 'iteration'))
+    trainer.extend(extensions.snapshot(), trigger=(50, 'iteration'))
     trainer.extend(extensions.ProgressBar())
     trainer.extend(extensions.dump_graph('main/loss'))
     if extensions.PlotReport.available():
@@ -225,7 +225,7 @@ def train(args: argparse.Namespace):
 
         logger.info(f'Validation data: {validation_size}')
 
-        @chainer.training.make_extension(trigger=(200, 'iteration'))
+        @chainer.training.make_extension(trigger=(50, 'iteration'))
         def translate(_):
             data = validation_data[np.random.choice(validation_size)]
             source, target = convert([data], cargs.gpu)
@@ -244,7 +244,7 @@ def train(args: argparse.Namespace):
             logger.info('# result : ' + result_sentence)
             logger.info('# expect : ' + target_sentence)
 
-        trainer.extend(translate, trigger=(4000, 'iteration'))
+        trainer.extend(translate, trigger=(50, 'iteration'))
 
     print('start training')
 
