@@ -93,12 +93,13 @@ def load_vocab(vocab_file: Union[Path, str], size: int) -> Dict[str, int]:
     words = ['<UNK>', '<EOS>']
     with open(vocab_file) as f:
         words += [line.strip() for line in f]
+    assert size <= len(words)
 
-    vocab = {word: index for index, word in enumerate(words)}
+    vocab = {word: index for index, word in enumerate(words) if index < size}
     assert vocab['<UNK>'] == UNK
     assert vocab['<EOS>'] == EOS
 
-    return vocab[:size]
+    return vocab
 
 
 def load_data(
@@ -126,6 +127,7 @@ def load_data(
         tgt_len = sum(1 for _ in tgt)
         assert src_len == tgt_len
 
+    with open(source) as src, open(target) as tgt:
         bar = ProgressBar()
         for s, t in bar(zip(src, tgt), max_value=src_len):
             s_words = s.strip().split()
@@ -214,11 +216,17 @@ def train(args: argparse.Namespace):
         def translate(_):
             data = validation_data[model.xp.random.choice(validation_size)]
             source, mask, target = convert([data], cargs.gpu)
-            result = F.separate(model.translate(source, mask)[0], axis=0)
+            result = F.separate(F.reshape(model.translate(source, mask)[0], (1, -1)), axis=0)
 
-            source_sentence = ' '.join([source_word[x] for x in source])
-            target_sentence = ' '.join([target_word[y] for y in target])
-            result_sentence = ' '.join([target_word[y] for y in result])
+            source_sentence = ' '.join(
+                [source_word[word] for sentence in source for word in sentence.data]
+            )
+            target_sentence = ' '.join(
+                [target_word[word] for sentence in target for word in sentence.data]
+            )
+            result_sentence = ' '.join(
+                [target_word[word] for sentence in result for word in sentence.data]
+            )
             logger.info('# source : ' + source_sentence)
             logger.info('# result : ' + result_sentence)
             logger.info('# expect : ' + target_sentence)

@@ -37,7 +37,10 @@ class Decoder(chainer.Chain):
                                              attention_hidden_layer_size,
                                              hidden_layer_size)
             self.bos_state = Parameter(
-                initializer=self.xp.random.randn((1, hidden_layer_size))
+                initializer=self.xp.random.randn(
+                    1,
+                    hidden_layer_size
+                ).astype('f')
             )
         self.vocabulary_size = vocabulary_size
         self.word_embeddings_size = word_embeddings_size
@@ -49,19 +52,17 @@ class Decoder(chainer.Chain):
                  source_masks: List[Variable],
                  targets: List[Variable]) -> Variable:
         minibatch_size, max_sentence_size, encoder_output_size = \
-            encoded_source.shape[0]
+            encoded_source.shape
         assert encoder_output_size == self.encoder_output_size
         assert len(source_masks) == max_sentence_size
         assert source_masks[0].shape == (minibatch_size,)
         assert targets[0].shape == (minibatch_size,)
 
         compute_context = self.attention(encoded_source, source_masks)
-        state = Variable(
-            F.broadcast_to(
+        state = F.broadcast_to(
                 self.bos_state, (minibatch_size, self.hidden_layer_size)
-            )
         )
-        total_loss = Variable(self.xp.zeros(minibatch_size))
+        total_loss = Variable(self.xp.array(0, 'f'))
         total_predictions = 0
 
         for target in targets:
@@ -83,16 +84,14 @@ class Decoder(chainer.Chain):
                   encoded_source: Variable,
                   source_masks: List[Variable],
                   max_length: int = 100) -> List[Variable]:
-        sentence_count = len(source_masks)
+        sentence_count = encoded_source.shape[0]
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
-            mask = F.vstack(source_masks)
-            assert encoded_source.shape == mask.shape
+            mask = F.transpose(F.vstack(source_masks))
+            assert encoded_source.shape[:2] == mask.shape[:2]
 
             compute_context = self.attention(encoded_source, source_masks)
-            state = Variable(
-                F.broadcast_to(
-                    self.bos_state, (sentence_count, self.hidden_layer_size)
-                )
+            state = F.broadcast_to(
+                self.bos_state, (sentence_count, self.hidden_layer_size)
             )
             previous_id = self.xp.full((sentence_count,), EOS, 'i')
             result = []
@@ -107,16 +106,18 @@ class Decoder(chainer.Chain):
                 all_concatenated = F.concat((concatenated, state))
                 logit = self.linear(self.maxout(all_concatenated))
 
-                previous_id = F.softmax(logit)
+                previous_id = F.reshape(F.argmax(logit), (sentence_count,))
                 result.append(previous_id)
 
             # Remove EOS tags
-            outputs = F.separate(F.vstack(result), axis=0)
+            outputs = F.separate(F.transpose(F.vstack(result)), axis=0)
+            assert len(outputs) == sentence_count
             output_sentences = []
             for output in outputs:
-                indexes = self.xp.argwhere(output == EOS)
+                assert output.shape == (max_length,)
+                indexes = self.xp.argwhere(output.data == EOS)
                 if len(indexes) > 0:
-                    output = output[indexes[0, 0]]
+                    output = output[:indexes[0, 0]]
                 output_sentences.append(output)
 
             return output_sentences
