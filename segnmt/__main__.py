@@ -14,7 +14,7 @@ from typing import Optional
 import segnmt.commands
 
 
-basicConfig(level=INFO)
+basicConfig(level=DEBUG)
 
 
 def main(arguments: Optional[List[str]] = None):

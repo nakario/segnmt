@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import List
 
 import chainer
@@ -9,6 +10,9 @@ import numpy as np
 
 from segnmt.misc.constants import EOS
 from segnmt.models.attention import AttentionModule
+
+
+logger = getLogger(__name__)
 
 
 class Decoder(chainer.Chain):
