@@ -116,6 +116,7 @@ class Decoder(chainer.Chain):
 
             # Remove EOS tags
             outputs = F.separate(F.transpose(F.vstack(result)), axis=0)
+            logger.debug(f'outputs: {outputs}')
             assert len(outputs) == sentence_count
             output_sentences = []
             for output in outputs:

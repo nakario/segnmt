@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import Callable
 from typing import List
 
@@ -5,6 +6,9 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 from chainer import Variable
+
+
+logger = getLogger(__name__)
 
 
 class AttentionModule(chainer.Chain):

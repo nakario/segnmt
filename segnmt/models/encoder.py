@@ -65,6 +65,7 @@ class Encoder(chainer.Chain):
         for i, es in enumerate(encoded_sentences):
             logger.debug(f'encoded: {es.shape}')
         assert len(encoded_sentences) == minibatch_size
+        logger.debug(f'encoded: {encoded_sentences}')
 
         encoded_sentence_matrix = F.pad_sequence(encoded_sentences, padding=0)
         logger.debug(f'matrix: {encoded_sentence_matrix.shape}')
