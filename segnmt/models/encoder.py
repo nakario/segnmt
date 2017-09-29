@@ -57,18 +57,12 @@ class Encoder(chainer.Chain):
         masked_sentences: List[Variable] = []
         for sentence, mask_ in zip(embedded_sentences, sentence_masks):
             masked_sentences.append(sentence[mask_.data])
-        for i, ms in enumerate(masked_sentences):
-            logger.debug(f'masked:  {ms.shape}')
 
         encoded_sentences: List[Variable] = \
             self.nstep_birnn(None, None, masked_sentences)[-1]
-        for i, es in enumerate(encoded_sentences):
-            logger.debug(f'encoded: {es.shape}')
         assert len(encoded_sentences) == minibatch_size
-        logger.debug(f'encoded: {encoded_sentences}')
 
         encoded_sentence_matrix = F.pad_sequence(encoded_sentences, padding=0)
-        logger.debug(f'matrix: {encoded_sentence_matrix.shape}')
         assert encoded_sentence_matrix.shape == \
             (minibatch_size, max_sentence_size, output_size)
 
