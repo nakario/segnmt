@@ -91,7 +91,7 @@ class Decoder(chainer.Chain):
     def translate(self,
                   encoded_source: Variable,
                   source_masks: List[Variable],
-                  max_length: int = 100) -> List[Variable]:
+                  max_length: int = 10) -> List[Variable]:
         sentence_count = encoded_source.shape[0]
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             mask = F.transpose(F.vstack(source_masks))
