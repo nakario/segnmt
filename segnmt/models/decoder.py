@@ -76,7 +76,7 @@ class Decoder(chainer.Chain):
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
-            current_sentence_count = self.xp.sum(target_id.data != PAD)
+            current_sentence_count = self.xp.sum(target_id != PAD)
 
             loss = F.softmax_cross_entropy(logit, target_id, ignore_label=PAD)
             total_loss += loss * current_sentence_count
