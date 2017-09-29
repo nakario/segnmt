@@ -3,6 +3,7 @@ from typing import List
 import chainer
 from chainer import Variable
 
+from segnmt.misc.typing import ndarray
 from segnmt.models.encoder import Encoder
 from segnmt.models.decoder import Decoder
 
@@ -33,15 +34,13 @@ class EncoderDecoder(chainer.Chain):
                                encoder_hidden_layer_size * 2,
                                maxout_layer_size)
 
-    def __call__(self, src_batch, src_mask, tgt_batch):
-        encoded = self.enc(src_batch, src_mask)
-        loss = self.dec(encoded, src_mask, tgt_batch)
+    def __call__(self, source: ndarray, target: ndarray) -> Variable:
+        encoded = self.enc(source)
+        loss = self.dec(encoded, target)
         chainer.report({'loss': loss.data}, self)
         return loss
 
-    def translate(self,
-                  sentences: List[Variable],
-                  masks: List[Variable]) -> List[Variable]:
-        encoded = self.enc(sentences, masks)
-        translated = self.dec.translate(encoded, masks)
+    def translate(self, sentences: ndarray) -> List[ndarray]:
+        encoded = self.enc(sentences)
+        translated = self.dec.translate(encoded)
         return translated

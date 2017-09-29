@@ -5,6 +5,9 @@ import chainer.functions as F
 import chainer.links as L
 from chainer import Variable
 
+from segnmt.misc.constants import PAD
+from segnmt.misc.typing import ndarray
+
 
 class Encoder(chainer.Chain):
     def __init__(self,
@@ -26,40 +29,31 @@ class Encoder(chainer.Chain):
         self.word_embeddings_size = word_embeddings_size
         self.output_size = hidden_layer_size * 2
 
-    def __call__(self,
-                 sequence: List[Variable],
-                 mask: List[Variable]) -> Variable:
-        assert len(sequence) == len(mask)
+    def __call__(self, source: ndarray) -> Variable:
+        minibatch_size, max_sentence_size = source.shape
 
-        minibatch_size = sequence[0].shape[0]
-        max_sentence_size = len(sequence)
-        word_embeddings_size = self.word_embeddings_size
-        output_size = self.output_size
+        embedded_source = self.embed_id(source)
+        assert embedded_source.shape == \
+            (minibatch_size, max_sentence_size, self.word_embeddings_size)
 
-        sentence_matrix = F.transpose(F.vstack(sequence))
-        assert sentence_matrix.shape == (minibatch_size, max_sentence_size)
-
-        mask_matrix = F.transpose(F.vstack(mask))
-        assert mask_matrix.shape == (minibatch_size, max_sentence_size)
-
-        embedded_sentence_matrix = self.embed_id(sentence_matrix)
-        assert embedded_sentence_matrix.shape == \
-            (minibatch_size, max_sentence_size, word_embeddings_size)
-
-        embedded_sentences: List[Variable] = \
-            F.separate(embedded_sentence_matrix, axis=0)
-        sentence_masks: List[Variable] = F.separate(mask_matrix, axis=0)
+        embedded_sentences = F.separate(embedded_source, axis=0)
+        sentence_masks: List[ndarray] = \
+            self.xp.vsplit(source != PAD, minibatch_size)
 
         masked_sentences: List[Variable] = []
-        for sentence, mask_ in zip(embedded_sentences, sentence_masks):
-            masked_sentences.append(sentence[mask_.data])
+        for sentence, mask in zip(embedded_sentences, sentence_masks):
+            masked_sentences.append(sentence[mask.reshape((-1,))])
 
         encoded_sentences: List[Variable] = \
             self.nstep_birnn(None, None, masked_sentences)[-1]
         assert len(encoded_sentences) == minibatch_size
 
-        encoded_sentence_matrix = F.pad_sequence(encoded_sentences, padding=0)
-        assert encoded_sentence_matrix.shape == \
-            (minibatch_size, max_sentence_size, output_size)
+        encoded: Variable = F.pad_sequence(
+            encoded_sentences,
+            length=max_sentence_size,
+            padding=0.0
+        )
+        assert encoded.shape == \
+            (minibatch_size, max_sentence_size, self.output_size)
 
-        return encoded_sentence_matrix
+        return encoded

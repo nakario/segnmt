@@ -21,6 +21,7 @@ from progressbar import ProgressBar
 from segnmt.misc.constants import EOS
 from segnmt.misc.constants import PAD
 from segnmt.misc.constants import UNK
+from segnmt.misc.typing import ndarray
 from segnmt.models.encdec import EncoderDecoder
 
 
@@ -60,23 +61,22 @@ class ConstArguments(NamedTuple):
 def convert(
         minibatch: List[Tuple[np.ndarray, np.ndarray]],
         device: Optional[int]
-) -> Tuple[List[Variable], List[Variable], List[Variable]]:
+) -> Tuple[ndarray, ndarray]:
     # Append eos to the end of sentence
     eos = np.array([EOS], 'i')
     src_batch, tgt_batch = zip(*minibatch)
-    src_sentences = \
-        [Variable(to_device(device, np.hstack((s, eos)))) for s in src_batch]
-    tgt_sentences = \
-        [Variable(to_device(device, np.hstack((t, eos)))) for t in tgt_batch]
+    with chainer.no_backprop_mode():
+        src_sentences = \
+            [Variable(np.hstack((sentence, eos))) for sentence in src_batch]
+        tgt_sentences = \
+            [Variable(np.hstack((sentence, eos))) for sentence in tgt_batch]
 
-    src_block = F.pad_sequence(src_sentences, padding=PAD)
-    tgt_block = F.pad_sequence(tgt_sentences, padding=PAD)
-    mask_block = Variable(src_block.data != PAD)
+        src_block = F.pad_sequence(src_sentences, padding=PAD).data
+        tgt_block = F.pad_sequence(tgt_sentences, padding=PAD).data
 
     return (
-        F.separate(src_block, axis=1),
-        F.separate(mask_block, axis=1),
-        F.separate(tgt_block, axis=1)
+        to_device(device, src_block),
+        to_device(device, tgt_block)
     )
 
 
@@ -121,15 +121,16 @@ def load_data(
 
     data = []
 
-    logger.info(f'loading {source.absolute()} and {target.absolute()}')
     with open(source) as src, open(target) as tgt:
         src_len = sum(1 for _ in src)
         tgt_len = sum(1 for _ in tgt)
         assert src_len == tgt_len
+        file_len = src_len
 
+    logger.info(f'loading {source.absolute()} and {target.absolute()}')
     with open(source) as src, open(target) as tgt:
         bar = ProgressBar()
-        for s, t in bar(zip(src, tgt), max_value=src_len):
+        for s, t in bar(zip(src, tgt), max_value=file_len):
             s_words = s.strip().split()
             t_words = t.strip().split()
             if len(s_words) < min_src_len or max_src_len < len(s_words):
@@ -215,23 +216,17 @@ def train(args: argparse.Namespace):
         @chainer.training.make_extension(trigger=(200, 'iteration'))
         def translate(_):
             data = validation_data[np.random.choice(validation_size)]
-            source, mask, target = convert([data], cargs.gpu)
-            result = F.separate(
-                F.reshape(
-                    model.translate(source, mask)[0],
-                    (1, -1)
-                ),
-                axis=0
-            )
+            source, target = convert([data], cargs.gpu)
+            result = model.translate(source)[0].reshape((1, -1))
 
             source_sentence = ' '.join(
-                [source_word[int(word.data[0])] for word in source]
+                [source_word[int(word)] for word in source[0]]
             )
             target_sentence = ' '.join(
-                [target_word[int(word.data[0])] for word in target]
+                [target_word[int(word)] for word in target[0]]
             )
             result_sentence = ' '.join(
-                [target_word[int(word)] for word in result[0].data]
+                [target_word[int(word)] for word in result[0]]
             )
             logger.info('# source : ' + source_sentence)
             logger.info('# result : ' + result_sentence)
