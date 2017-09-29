@@ -61,13 +61,15 @@ class Decoder(chainer.Chain):
 
         compute_context = self.attention(encoded_source, source_masks)
         state = F.broadcast_to(
-                self.bos_state, (minibatch_size, self.hidden_layer_size)
+            self.bos_state, (minibatch_size, self.hidden_layer_size)
+        )
+        previous_output = self.embed_id(
+            Variable(self.xp.full((minibatch_size,), EOS, 'i'))
         )
         total_loss = Variable(self.xp.array(0, 'f'))
         total_predictions = 0
 
         for target in targets:
-            previous_output = self.embed_id(target)
             context = compute_context(state)
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_output, context))
@@ -78,6 +80,8 @@ class Decoder(chainer.Chain):
             loss = F.softmax_cross_entropy(logit, target)
             total_loss += loss * minibatch_size
             total_predictions += minibatch_size
+
+            previous_output = self.embed_id(target)
 
         return total_loss / total_predictions
 
@@ -94,11 +98,12 @@ class Decoder(chainer.Chain):
             state = F.broadcast_to(
                 self.bos_state, (sentence_count, self.hidden_layer_size)
             )
-            previous_id = self.xp.full((sentence_count,), EOS, 'i')
+            previous_embedding = self.embed_id(
+                self.xp.full((sentence_count,), EOS, 'i')
+            )
             result = []
 
             for _ in range(max_length):
-                previous_embedding = self.embed_id(previous_id)
                 context = compute_context(state)
                 assert context.shape == \
                     (sentence_count, self.encoder_output_size)
@@ -109,6 +114,8 @@ class Decoder(chainer.Chain):
 
                 previous_id = F.reshape(F.argmax(logit), (sentence_count,))
                 result.append(previous_id)
+
+                previous_embedding = self.embed_id(previous_id)
 
             # Remove EOS tags
             outputs = F.separate(F.transpose(F.vstack(result)), axis=0)
