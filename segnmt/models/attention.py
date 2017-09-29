@@ -1,5 +1,4 @@
 from typing import Callable
-from typing import List
 
 import chainer
 import chainer.functions as F
@@ -25,33 +24,30 @@ class AttentionModule(chainer.Chain):
         self.attention_layer_size = attention_layer_size
 
     def __call__(self,
-                 encoded_matrix: Variable,
-                 input_mask: List[Variable]) -> Callable[[Variable], Variable]:
-        minibatch_size, max_sentence_size, encoder_output_size = \
-            encoded_matrix.shape
+                 encoded: Variable) -> Callable[[Variable], Variable]:
+        minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
         assert encoder_output_size == self.encoder_output_size
-        attention_layer_size = self.attention_layer_size
 
         precomputed_alignment_factor = F.reshape(
             self.linear_h(
                 F.reshape(
-                    encoded_matrix,
+                    encoded,
                     (minibatch_size * max_sentence_size, encoder_output_size)
                 )
             ),
-            (minibatch_size, max_sentence_size, attention_layer_size)
+            (minibatch_size, max_sentence_size, self.attention_layer_size)
         )
 
         def compute_context(previous_state: Variable) -> Variable:
             state_alignment_factor = self.linear_s(previous_state)
             assert state_alignment_factor.shape == \
-                (minibatch_size, attention_layer_size)
+                (minibatch_size, self.attention_layer_size)
             state_alignment_factor_broadcast = F.broadcast_to(
                 F.reshape(
                     state_alignment_factor,
-                    (minibatch_size, 1, attention_layer_size)
+                    (minibatch_size, 1, self.attention_layer_size)
                 ),
-                (minibatch_size, max_sentence_size, attention_layer_size)
+                (minibatch_size, max_sentence_size, self.attention_layer_size)
             )
             scores = F.reshape(
                 self.linear_o(
@@ -62,7 +58,7 @@ class AttentionModule(chainer.Chain):
                         ),
                         (
                             minibatch_size * max_sentence_size,
-                            attention_layer_size
+                            self.attention_layer_size
                         )
                     )
                 ),
@@ -72,7 +68,7 @@ class AttentionModule(chainer.Chain):
             assert attention.shape == (minibatch_size, max_sentence_size)
 
             context = F.reshape(
-                F.batch_matmul(attention, encoded_matrix, transa=True),
+                F.batch_matmul(attention, encoded, transa=True),
                 (minibatch_size, encoder_output_size)
             )
             return context

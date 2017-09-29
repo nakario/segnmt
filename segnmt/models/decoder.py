@@ -9,6 +9,7 @@ import numpy as np
 
 from segnmt.misc.constants import EOS
 from segnmt.misc.constants import PAD
+from segnmt.misc.typing import ndarray
 from segnmt.models.attention import AttentionModule
 
 
@@ -50,59 +51,50 @@ class Decoder(chainer.Chain):
         self.encoder_output_size = encoder_output_size
 
     def __call__(self,
-                 encoded_source: Variable,
-                 source_masks: List[Variable],
-                 targets: List[Variable]) -> Variable:
-        minibatch_size, max_sentence_size, encoder_output_size = \
-            encoded_source.shape
+                 encoded: Variable, target: ndarray) -> Variable:
+        minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
         assert encoder_output_size == self.encoder_output_size
-        assert len(source_masks) == max_sentence_size
-        assert source_masks[0].shape == (minibatch_size,)
-        assert targets[0].shape == (minibatch_size,)
+        assert target.shape[0] == minibatch_size
 
-        compute_context = self.attention(encoded_source, source_masks)
+        compute_context = self.attention(encoded)
         state = F.broadcast_to(
             self.bos_state, (minibatch_size, self.hidden_layer_size)
         )
-        previous_output = self.embed_id(
+        previous_embedding = self.embed_id(
             Variable(self.xp.full((minibatch_size,), EOS, 'i'))
         )
         total_loss = Variable(self.xp.array(0, 'f'))
         total_predictions = 0
 
-        for target in targets:
+        for target_id in self.xp.hsplit(target, target.shape[1]):
             context = compute_context(state)
             assert context.shape == (minibatch_size, self.encoder_output_size)
-            concatenated = F.concat((previous_output, context))
+            concatenated = F.concat((previous_embedding, context))
+
             state = self.rnn(concatenated)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
-            current_sentence_count = self.xp.sum(target.data != PAD)
+            current_sentence_count = self.xp.sum(target_id.data != PAD)
 
-            loss = F.softmax_cross_entropy(logit, target, ignore_label=PAD)
+            loss = F.softmax_cross_entropy(logit, target_id, ignore_label=PAD)
             total_loss += loss * current_sentence_count
             total_predictions += current_sentence_count
 
-            previous_output = self.embed_id(target)
+            previous_embedding = self.embed_id(target_id)
 
         return total_loss / total_predictions
 
     def translate(self,
-                  encoded_source: Variable,
-                  source_masks: List[Variable],
-                  max_length: int = 100) -> List[Variable]:
-        sentence_count = encoded_source.shape[0]
+                  encoded: Variable, max_length: int = 100) -> List[ndarray]:
+        sentence_count = encoded.shape[0]
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
-            mask = F.transpose(F.vstack(source_masks))
-            assert encoded_source.shape[:2] == mask.shape[:2]
-
-            compute_context = self.attention(encoded_source, source_masks)
+            compute_context = self.attention(encoded)
             state = F.broadcast_to(
                 self.bos_state, (sentence_count, self.hidden_layer_size)
             )
             previous_embedding = self.embed_id(
-                self.xp.full((sentence_count,), EOS, 'i')
+                Variable(self.xp.full((sentence_count,), EOS, 'i'))
             )
             result = []
 
@@ -111,16 +103,17 @@ class Decoder(chainer.Chain):
                 assert context.shape == \
                     (sentence_count, self.encoder_output_size)
                 concatenated = F.concat((previous_embedding, context))
+
                 state = self.rnn(concatenated)
                 all_concatenated = F.concat((concatenated, state))
                 logit = self.linear(self.maxout(all_concatenated))
 
-                previous_id = F.reshape(F.argmax(logit), (sentence_count,))
-                result.append(previous_id)
+                output_id = F.reshape(F.argmax(logit), (sentence_count,))
+                result.append(output_id)
 
-                previous_embedding = self.embed_id(previous_id)
+                previous_embedding = self.embed_id(output_id)
 
-            # Remove EOS tags
+            # Remove words after <EOS>
             outputs = F.separate(F.transpose(F.vstack(result)), axis=0)
             assert len(outputs) == sentence_count
             output_sentences = []
@@ -129,6 +122,6 @@ class Decoder(chainer.Chain):
                 indexes = np.argwhere(output.data == EOS)
                 if len(indexes) > 0:
                     output = output[:indexes[0, 0] + 1]
-                output_sentences.append(output)
+                output_sentences.append(output.data)
 
             return output_sentences
