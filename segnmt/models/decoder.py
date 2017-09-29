@@ -8,6 +8,7 @@ from chainer import Variable
 import numpy as np
 
 from segnmt.misc.constants import EOS
+from segnmt.misc.constants import PAD
 from segnmt.models.attention import AttentionModule
 
 
@@ -77,9 +78,11 @@ class Decoder(chainer.Chain):
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
-            loss = F.softmax_cross_entropy(logit, target)
-            total_loss += loss * minibatch_size
-            total_predictions += minibatch_size
+            current_sentence_count = self.xp.sum(target.data != PAD)
+
+            loss = F.softmax_cross_entropy(logit, target, ignore_label=PAD)
+            total_loss += loss * current_sentence_count
+            total_predictions += current_sentence_count
 
             previous_output = self.embed_id(target)
 
