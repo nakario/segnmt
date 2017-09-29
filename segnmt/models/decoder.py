@@ -128,7 +128,7 @@ class Decoder(chainer.Chain):
                 assert output.shape == (max_length,)
                 indexes = np.argwhere(output.data == EOS)
                 if len(indexes) > 0:
-                    output = output[:indexes[0, 0]]
+                    output = output[:indexes[0, 0] + 1]
                 output_sentences.append(output)
 
             return output_sentences
