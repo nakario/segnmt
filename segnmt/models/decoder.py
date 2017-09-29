@@ -86,7 +86,7 @@ class Decoder(chainer.Chain):
         return total_loss / total_predictions
 
     def translate(self,
-                  encoded: Variable, max_length: int = 100) -> List[ndarray]:
+                  encoded: Variable, max_length: int = 10) -> List[ndarray]:
         sentence_count = encoded.shape[0]
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             compute_context = self.attention(encoded)
