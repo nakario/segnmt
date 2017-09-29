@@ -67,6 +67,7 @@ class Decoder(chainer.Chain):
         total_predictions = 0
 
         for target_id in self.xp.hsplit(target, target.shape[1]):
+            target_id = target_id.reshape((minibatch_size,))
             context = compute_context(state)
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))

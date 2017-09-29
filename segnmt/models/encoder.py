@@ -37,11 +37,12 @@ class Encoder(chainer.Chain):
             (minibatch_size, max_sentence_size, self.word_embeddings_size)
 
         embedded_sentences = F.separate(embedded_source, axis=0)
-        sentence_masks = self.xp.vsplit(source.data == PAD, minibatch_size)
+        sentence_masks: List[ndarray] = \
+            self.xp.vsplit(source != PAD, minibatch_size)
 
         masked_sentences: List[Variable] = []
         for sentence, mask in zip(embedded_sentences, sentence_masks):
-            masked_sentences.append(sentence[mask])
+            masked_sentences.append(sentence[mask.reshape((-1,))])
 
         encoded_sentences: List[Variable] = \
             self.nstep_birnn(None, None, masked_sentences)[-1]
