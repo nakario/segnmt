@@ -225,10 +225,10 @@ def train(args: argparse.Namespace):
             )
 
             source_sentence = ' '.join(
-                [source_word[int(word)] for word in source[0].data]
+                [source_word[int(word.data[0])] for word in source]
             )
             target_sentence = ' '.join(
-                [target_word[int(word)] for word in target[0].data]
+                [target_word[int(word.data[0])] for word in target]
             )
             result_sentence = ' '.join(
                 [target_word[int(word)] for word in result[0].data]
