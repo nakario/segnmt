@@ -203,6 +203,8 @@ def train(args: argparse.Namespace):
             'epoch',
             file_name=cargs.loss_plot_file
         ))
+    else:
+        logger.warning('PlotReport is not available.')
 
     if cargs.validation_source is not None and \
             cargs.validation_target is not None:
