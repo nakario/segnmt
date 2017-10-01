@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -13,6 +14,9 @@ from segnmt.misc.constants import EOS
 from segnmt.misc.constants import PAD
 from segnmt.misc.typing import ndarray
 from segnmt.models.attention import AttentionModule
+
+
+logger = getLogger(__name__)
 
 
 class SimilarityScoreFunction(chainer.Chain):
@@ -241,7 +245,7 @@ class Decoder(chainer.Chain):
         return keys
 
     def translate(self,
-                  encoded: Variable, max_length: int = 100) -> List[ndarray]:
+                  encoded: Variable, max_length: int = 10) -> List[ndarray]:
         sentence_count = encoded.shape[0]
         compute_context = self.attention(encoded)
         cell = Variable(

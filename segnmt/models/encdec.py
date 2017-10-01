@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -8,6 +9,9 @@ from chainer import Variable
 from segnmt.misc.typing import ndarray
 from segnmt.models.encoder import Encoder
 from segnmt.models.decoder import Decoder
+
+
+logger = getLogger(__name__)
 
 
 class EncoderDecoder(chainer.Chain):

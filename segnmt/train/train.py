@@ -330,12 +330,12 @@ def train(args: argparse.Namespace):
             ['main/loss', 'validation/main/loss'],
             trigger=(cargs.extension_trigger, 'iteration'),
             file_name=cargs.loss_plot_file
-        ))
+        ), trigger=(10, 'iteration'))
         trainer.extend(extensions.PlotReport(
             ['validation/main/bleu'],
             trigger=(cargs.extension_trigger, 'iteration'),
             file_name=cargs.bleu_plot_file
-        ))
+        ), trigger=(10, 'iteration'))
     else:
         logger.warning('PlotReport is not available.')
 
@@ -379,7 +379,7 @@ def train(args: argparse.Namespace):
 
         validation_size = len(validation_data)
 
-        @chainer.training.make_extension(trigger=(200, 'iteration'))
+        @chainer.training.make_extension(trigger=(50, 'iteration'))
         def translate(_):
             data = validation_data[np.random.choice(validation_size)]
             converted = converter([data], cargs.gpu)
