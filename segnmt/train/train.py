@@ -196,7 +196,7 @@ def train(args: argparse.Namespace):
         trigger=(10, 'iteration')
     )
     trainer.extend(extensions.snapshot(), trigger=(50, 'iteration'))
-    trainer.extend(extensions.ProgressBar())
+    trainer.extend(extensions.ProgressBar(update_interval=1))
     trainer.extend(extensions.dump_graph('main/loss'))
     if extensions.PlotReport.available():
         trainer.extend(extensions.PlotReport(
