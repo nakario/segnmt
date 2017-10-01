@@ -220,12 +220,21 @@ def train(args: argparse.Namespace):
             cargs.max_target_len
         )
 
-        validation_size = len(validation_data)
+        validation_iter = chainer.iterators.SerialIterator(
+            validation_data,
+            cargs.minibatch_size,
+            repeat=False,
+            shuffle=False
+        )
+
+        trainer.extend(extensions.Evaluator(
+            validation_iter, model, converter=convert, device=cargs.gpu
+        ))
 
         source_word = {index: word for word, index in source_vocab.items()}
         target_word = {index: word for word, index in target_vocab.items()}
 
-        logger.info(f'Validation data: {validation_size}')
+        validation_size = len(validation_data)
 
         @chainer.training.make_extension(trigger=(200, 'iteration'))
         def translate(_):
