@@ -37,7 +37,7 @@ class EncoderDecoder(chainer.Chain):
     def __call__(self, source: ndarray, target: ndarray) -> Variable:
         encoded = self.enc(source)
         loss = self.dec(encoded, target)
-        chainer.report({'loss': loss.data}, self)
+        chainer.report({'loss': loss}, self)
         return loss
 
     def translate(self, sentences: ndarray) -> List[ndarray]:
