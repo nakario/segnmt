@@ -50,9 +50,10 @@ class ConstArguments(NamedTuple):
     target_vocab: str
     training_source: str
     training_target: str
-    loss_plot_file: str
     validation_source: Optional[str]
     validation_target: Optional[str]
+    loss_plot_file: str
+    resume_file: Optional[str]
     min_source_len: int
     max_source_len: int
     min_target_len: int
@@ -248,6 +249,9 @@ def train(args: argparse.Namespace):
         trainer.extend(translate, trigger=(4000, 'iteration'))
 
     trainer.extend(extensions.ProgressBar(update_interval=200))
+
+    if cargs.resume_file is not None:
+        chainer.serializers.load_npz(cargs.resume_file, trainer)
 
     print('start training')
 
