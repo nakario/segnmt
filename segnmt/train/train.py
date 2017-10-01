@@ -15,6 +15,7 @@ import chainer.functions as F
 from chainer import training
 from chainer.training import extensions
 from chainer import Variable
+import matplotlib
 import numpy as np
 from progressbar import ProgressBar
 
@@ -26,6 +27,7 @@ from segnmt.models.encdec import EncoderDecoder
 
 
 logger = getLogger(__name__)
+matplotlib.use('Agg')
 
 
 class ConstArguments(NamedTuple):
@@ -48,6 +50,7 @@ class ConstArguments(NamedTuple):
     target_vocab: str
     training_source: str
     training_target: str
+    loss_plot_file: str
     validation_source: Optional[str]
     validation_target: Optional[str]
     min_source_len: int
@@ -192,6 +195,15 @@ def train(args: argparse.Namespace):
         ),
         trigger=(200, 'iteration')
     )
+    trainer.extend(extensions.snapshot(), trigger=(200, 'iteration'))
+    trainer.extend(extensions.ProgressBar())
+    trainer.extend(extensions.dump_graph('main/loss'))
+    if extensions.PlotReport.available():
+        trainer.extend(extensions.PlotReport(
+            ['main/loss', 'validation/main/loss'],
+            'epoch',
+            file_name=cargs.loss_plot_file
+        ))
 
     if cargs.validation_source is not None and \
             cargs.validation_target is not None:
