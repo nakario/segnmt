@@ -41,6 +41,7 @@ class EncoderDecoder(chainer.Chain):
         return loss
 
     def translate(self, sentences: ndarray) -> List[ndarray]:
-        encoded = self.enc(sentences)
-        translated = self.dec.translate(encoded)
-        return translated
+        with chainer.no_backprop_mode(), chainer.using_config('train', False):
+            encoded = self.enc(sentences)
+            translated = self.dec.translate(encoded)
+            return translated
