@@ -132,6 +132,34 @@ def convert(
     )
 
 
+def convert_with_similar_sentences(
+        minibatch: List[
+            Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]
+        ],
+        device: Optional[int]
+) -> Tuple[ndarray, ndarray, List[Tuple[ndarray, ndarray]]]:
+    src_batch, tgt_batch, sim_batches = zip(*minibatch)
+    source, target = convert(list(zip(src_batch, tgt_batch)), device)
+    # len(sim_batches) == minibatch_size
+    # len(sim_batches[i]) == retrieved_size
+    # sim_batches[i][j][0].shape == (source_sentence_size,)
+    # sim_batches[i][j][1].shape == (target_sentence_size,)
+    max_retrieved_count = max(len(x) for x in sim_batches)
+    similar_sentences = []
+    for i in range(max_retrieved_count):
+        similar_sentences.append(
+            convert([
+                sim_batch[i] if i < len(sim_batch)
+                else (np.array([], 'f'), np.array([], 'f'))
+                for sim_batch in sim_batches
+            ], device)
+        )
+
+    return (
+        source, target, similar_sentences
+    )
+
+
 def load_vocab(vocab_file: Union[Path, str], size: int) -> Dict[str, int]:
     """Create a vocabulary from a file.
 
@@ -162,8 +190,12 @@ def load_data(
         min_src_len: int,
         max_src_len: int,
         min_tgt_len: int,
-        max_tgt_len: int
-) -> List[Tuple[np.ndarray, np.ndarray]]:
+        max_tgt_len: int,
+        similar_index: Optional[Union[Path, str]]
+) -> Union[
+    List[Tuple[np.ndarray, np.ndarray]],
+    List[Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]]
+]:
     if isinstance(source, str):
         source = Path(source)
     if isinstance(target, str):
@@ -172,6 +204,7 @@ def load_data(
     assert target.exists()
 
     data = []
+    skipped_indices = []
 
     with open(source) as src, open(target) as tgt:
         src_len = sum(1 for _ in src)
@@ -182,12 +215,15 @@ def load_data(
     logger.info(f'loading {source.absolute()} and {target.absolute()}')
     with open(source) as src, open(target) as tgt:
         bar = ProgressBar()
-        for s, t in bar(zip(src, tgt), max_value=file_len):
+        i = 0
+        for i, (s, t) in bar(enumerate(zip(src, tgt)), max_value=file_len):
             s_words = s.strip().split()
             t_words = t.strip().split()
             if len(s_words) < min_src_len or max_src_len < len(s_words):
+                skipped_indices.append(i)
                 continue
             if len(t_words) < min_tgt_len or max_tgt_len < len(t_words):
+                skipped_indices.append(i)
                 continue
             s_array = \
                 np.array([source_vocab.get(w, UNK) for w in s_words], 'i')
@@ -195,7 +231,38 @@ def load_data(
                 np.array([target_vocab.get(w, UNK) for w in t_words], 'i')
             data.append((s_array, t_array))
 
-    return data
+    if similar_index is None:
+        return data
+
+    skipped_indices = set(skipped_indices)
+    def file2data(index):
+        return index - sum(j < index for j in skipped_indices)
+
+    if isinstance(similar_index, str):
+        similar_index = Path(similar_index)
+    assert similar_index.exists()
+
+    with open(similar_index) as sim:
+        assert file_len == sum(1 for _ in sim)
+
+    fulldata = []
+
+    logger.info(f'loading similar sentences from {similar_index.absolute()}')
+    with open(similar_index) as f:
+        bar = ProgressBar()
+        skip_count = 0
+        for i, line in bar(enumerate(f), max_value=file_len):
+            if i in skipped_indices:
+                skip_count += 1
+                continue
+            indices = [
+                int(i) for i in line.strip().split()
+                if i not in skipped_indices
+            ]
+            similar_data = [data[file2data(i)] for i in indices]
+            fulldata.append((*data[file2data(i)], similar_data))
+
+    return fulldata
 
 
 def train(args: argparse.Namespace):

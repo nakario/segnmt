@@ -14,5 +14,11 @@ setup(
     name='segnmt',
     version='0.1.0',
     packages=find_packages(),
-    requires=['chainer>=2.1.0', 'matplotlib', 'progressbar2']
+    requires=[
+        'chainer>=2.1.0',
+        'matplotlib',
+        'nltk',
+        'progressbar2',
+        'whoosh'
+    ]
 )

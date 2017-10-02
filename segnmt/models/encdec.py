@@ -1,4 +1,6 @@
 from typing import List
+from typing import Optional
+from typing import Tuple
 
 import chainer
 from chainer import Variable
@@ -34,9 +36,19 @@ class EncoderDecoder(chainer.Chain):
                                encoder_hidden_layer_size * 2,
                                maxout_layer_size)
 
-    def __call__(self, source: ndarray, target: ndarray) -> Variable:
+    def __call__(
+            self,
+            source: ndarray,
+            target: ndarray,
+            similar_sentences: Optional[
+                List[Tuple[ndarray, ndarray]]
+            ] = None
+    ) -> Variable:
         encoded = self.enc(source)
-        loss = self.dec(encoded, target)
+        context_memory = None
+        if similar_sentences is not None:
+            context_memory = self.generate_context_memory(similar_sentences)
+        loss = self.dec(encoded, target, context_memory)
         chainer.report({'loss': loss}, self)
         return loss
 
@@ -45,3 +57,28 @@ class EncoderDecoder(chainer.Chain):
             encoded = self.enc(sentences)
             translated = self.dec.translate(encoded)
             return translated
+
+    def generate_context_memory(
+            self,
+            pairs: List[Tuple[ndarray, ndarray]],
+    ) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
+        max_retrieved_count = len(pairs)
+        contexts = []
+        states = []
+        logits = []
+        betas = []
+        with chainer.no_backprop_mode(), chainer.using_config('train', False):
+            for (source, target) in pairs:
+                minibatch_size, max_sentence_size = source.shape
+                assert target.shape[0] == minibatch_size
+                encoded = self.enc(source)
+                keys = self.dec.generate_keys(encoded, target)
+                contexts.append(keys[0])
+                states.append(keys[1])
+                logits.append(keys[2])
+                betas.append(self.xp.zeros((minibatch_size, 1), 'f'))
+        contexts = self.xp.dstack(contexts)
+        states = self.xp.dstack(states)
+        logits = self.xp.dstack(logits)
+        betas = self.xp.hstack(betas)
+        return contexts, states, logits, betas
