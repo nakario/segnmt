@@ -89,40 +89,39 @@ class Decoder(chainer.Chain):
     def translate(self,
                   encoded: Variable, max_length: int = 100) -> List[ndarray]:
         sentence_count = encoded.shape[0]
-        with chainer.no_backprop_mode(), chainer.using_config('train', False):
-            compute_context = self.attention(encoded)
-            state = F.broadcast_to(
-                self.bos_state, (sentence_count, self.hidden_layer_size)
-            )
-            previous_embedding = self.embed_id(
-                Variable(self.xp.full((sentence_count,), EOS, 'i'))
-            )
-            result = []
+        compute_context = self.attention(encoded)
+        state = F.broadcast_to(
+            self.bos_state, (sentence_count, self.hidden_layer_size)
+        )
+        previous_embedding = self.embed_id(
+            Variable(self.xp.full((sentence_count,), EOS, 'i'))
+        )
+        result = []
 
-            for _ in range(max_length):
-                context = compute_context(state)
-                assert context.shape == \
-                    (sentence_count, self.encoder_output_size)
-                concatenated = F.concat((previous_embedding, context))
+        for _ in range(max_length):
+            context = compute_context(state)
+            assert context.shape == \
+                (sentence_count, self.encoder_output_size)
+            concatenated = F.concat((previous_embedding, context))
 
-                state = self.rnn(concatenated)
-                all_concatenated = F.concat((concatenated, state))
-                logit = self.linear(self.maxout(all_concatenated))
+            state = self.rnn(concatenated)
+            all_concatenated = F.concat((concatenated, state))
+            logit = self.linear(self.maxout(all_concatenated))
 
-                output_id = F.reshape(F.argmax(logit), (sentence_count,))
-                result.append(output_id)
+            output_id = F.reshape(F.argmax(logit), (sentence_count,))
+            result.append(output_id)
 
-                previous_embedding = self.embed_id(output_id)
+            previous_embedding = self.embed_id(output_id)
 
-            # Remove words after <EOS>
-            outputs = F.separate(F.transpose(F.vstack(result)), axis=0)
-            assert len(outputs) == sentence_count
-            output_sentences = []
-            for output in outputs:
-                assert output.shape == (max_length,)
-                indexes = np.argwhere(output.data == EOS)
-                if len(indexes) > 0:
-                    output = output[:indexes[0, 0] + 1]
-                output_sentences.append(output.data)
+        # Remove words after <EOS>
+        outputs = F.separate(F.transpose(F.vstack(result)), axis=0)
+        assert len(outputs) == sentence_count
+        output_sentences = []
+        for output in outputs:
+            assert output.shape == (max_length,)
+            indexes = np.argwhere(output.data == EOS)
+            if len(indexes) > 0:
+                output = output[:indexes[0, 0] + 1]
+            output_sentences.append(output.data)
 
-            return output_sentences
+        return output_sentences
