@@ -98,7 +98,8 @@ class CalculateBleu(chainer.training.Extension):
                 source, _ = self.converter(minibatch, self.device)
                 results = self.model.translate(source)
                 hypotheses.extend(
-                    [sentence.tolist() for sentence in results]
+                    # Remove <EOS>
+                    [sentence.tolist()[:-1] for sentence in results]
                 )
         bleu = bleu_score.corpus_bleu(
             list_of_references,
