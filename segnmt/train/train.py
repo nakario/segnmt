@@ -16,6 +16,7 @@ from chainer import training
 from chainer.training import extensions
 from chainer import Variable
 import matplotlib
+from nltk.translate import bleu_score
 import numpy as np
 from progressbar import ProgressBar
 
@@ -60,6 +61,49 @@ class ConstArguments(NamedTuple):
     max_target_len: int
 
     run: Callable[[argparse.Namespace], None]
+
+
+class CalculateBleu(chainer.training.Extension):
+    triger = (1, 'epoch')
+    priority = chainer.training.PRIORITY_WRITER
+
+    def __init__(
+            self,
+            validation_iter: chainer.dataset.iterator.Iterator,
+            model: EncoderDecoder,
+            converter: Callable[
+                [List[Tuple[np.ndarray, np.ndarray]], Optional[int]],
+                Tuple[ndarray, ndarray]
+            ],
+            key: str,
+            device: int
+    ):
+        self.iter = validation_iter
+        self.model = model
+        self.converter = converter
+        self.device = device
+        self.key = key
+
+    def __call__(self, trainer):
+        list_of_references = []
+        hypotheses = []
+        with chainer.no_backprop_mode(), chainer.using_config('train', False):
+            for minibatch in self.iter:
+                target_sentences: List[np.ndarray] = tuple(zip(*minibatch))[1]
+                list_of_references.extend(
+                    [[sentence.tolist()] for sentence in target_sentences]
+                )
+                source, _ = self.converter(minibatch, self.device)
+                results = self.model.translate(source)
+                hypotheses.extend(
+                    [sentence.tolist() for sentence in results]
+                )
+        bleu = bleu_score.corpus_bleu(
+            list_of_references,
+            hypotheses,
+            smoothing_function=bleu_score.SmoothingFunction().method1
+        )
+        chainer.report({self.key: bleu})
 
 
 def convert(
@@ -220,7 +264,13 @@ def train(args: argparse.Namespace):
             cargs.max_target_len
         )
 
-        validation_iter = chainer.iterators.SerialIterator(
+        v_iter1 = chainer.iterators.SerialIterator(
+            validation_data,
+            cargs.minibatch_size,
+            repeat=False,
+            shuffle=False
+        )
+        v_iter2 = chainer.iterators.SerialIterator(
             validation_data,
             cargs.minibatch_size,
             repeat=False,
@@ -228,7 +278,11 @@ def train(args: argparse.Namespace):
         )
 
         trainer.extend(extensions.Evaluator(
-            validation_iter, model, converter=convert, device=cargs.gpu
+            v_iter1, model, converter=convert, device=cargs.gpu
+        ))
+        trainer.extend(CalculateBleu(
+            v_iter2, model, converter=convert, device=cargs.gpu,
+            key='validation/main/bleu'
         ))
 
         source_word = {index: word for word, index in source_vocab.items()}
