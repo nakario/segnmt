@@ -54,6 +54,7 @@ class ConstArguments(NamedTuple):
     validation_source: Optional[str]
     validation_target: Optional[str]
     loss_plot_file: str
+    bleu_plot_file: str
     resume_file: Optional[str]
     min_source_len: int
     max_source_len: int
@@ -236,7 +237,7 @@ def train(args: argparse.Namespace):
     trainer.extend(
         extensions.PrintReport(
             ['epoch', 'iteration', 'main/loss', 'validation/main/loss',
-             'elapsed_time']
+             'validation/main/bleu', 'elapsed_time']
         ),
         trigger=(200, 'iteration')
     )
@@ -247,6 +248,11 @@ def train(args: argparse.Namespace):
             ['main/loss', 'validation/main/loss'],
             'epoch',
             file_name=cargs.loss_plot_file
+        ))
+        trainer.extend(extensions.PlotReport(
+            ['validation/main/bleu'],
+            'epoch',
+            file_name=cargs.bleu_plot_file
         ))
     else:
         logger.warning('PlotReport is not available.')

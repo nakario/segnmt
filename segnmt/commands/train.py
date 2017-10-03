@@ -49,6 +49,8 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--loss-plot-file', type=str, default='loss.png',
                         help='')
+    parser.add_argument('--bleu-plot-file', type=str, default='bleu.png',
+                        help='')
     parser.add_argument('--resume-file', default=None,
                         help='')
     parser.add_argument('--min-source-len', type=int, default=1,
