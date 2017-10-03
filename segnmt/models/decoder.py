@@ -108,7 +108,7 @@ class Decoder(chainer.Chain):
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
-            output_id = F.reshape(F.argmax(logit), (sentence_count,))
+            output_id = F.reshape(F.argmax(logit, axis=1), (sentence_count,))
             result.append(output_id)
 
             previous_embedding = self.embed_id(output_id)
