@@ -70,7 +70,7 @@ class CalculateBleu(chainer.training.Extension):
 
     def __init__(
             self,
-            validation_iter: chainer.dataset.iterator.Iterator,
+            validation_iter: chainer.iterators.SerialIterator,
             model: EncoderDecoder,
             converter: Callable[
                 [List[Tuple[np.ndarray, np.ndarray]], Optional[int]],
@@ -88,6 +88,7 @@ class CalculateBleu(chainer.training.Extension):
     def __call__(self, trainer):
         list_of_references = []
         hypotheses = []
+        self.iter.reset()
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             for minibatch in self.iter:
                 target_sentences: List[np.ndarray] = tuple(zip(*minibatch))[1]
