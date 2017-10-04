@@ -330,7 +330,9 @@ def train(args: argparse.Namespace):
         )
 
     trainer.extend(
-        extensions.ProgressBar(update_interval=cargs.extension_trigger // 5)
+        extensions.ProgressBar(
+            update_interval=max(cargs.extension_trigger // 5, 1)
+        )
     )
 
     if cargs.resume_file is not None:
