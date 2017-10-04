@@ -60,6 +60,7 @@ class ConstArguments(NamedTuple):
     max_source_len: int
     min_target_len: int
     max_target_len: int
+    extension_trigger: int
 
     run: Callable[[argparse.Namespace], None]
 
@@ -235,27 +236,33 @@ def train(args: argparse.Namespace):
     updater = training.StandardUpdater(
         training_iter, optimizer, converter=convert, device=cargs.gpu)
     trainer = training.Trainer(updater, (cargs.epoch, 'epoch'))
-    trainer.extend(extensions.LogReport(trigger=(200, 'iteration')))
+    trainer.extend(
+        extensions.LogReport(),
+        trigger=(cargs.extension_trigger, 'iteration')
+    )
     trainer.extend(
         extensions.PrintReport(
             ['epoch', 'iteration', 'main/loss', 'validation/main/loss',
              'validation/main/bleu', 'elapsed_time']
         ),
-        trigger=(200, 'iteration')
+        trigger=(cargs.extension_trigger, 'iteration')
     )
-    trainer.extend(extensions.snapshot(), trigger=(200, 'iteration'))
+    trainer.extend(
+        extensions.snapshot(),
+        trigger=(cargs.extension_trigger, 'iteration'))
+    # Don't set `trigger` argument to `dump_graph`
     trainer.extend(extensions.dump_graph('main/loss'))
     if extensions.PlotReport.available():
         trainer.extend(extensions.PlotReport(
             ['main/loss', 'validation/main/loss'],
             'epoch',
             file_name=cargs.loss_plot_file
-        ))
+        ), trigger=(cargs.extension_trigger, 'iteration'))
         trainer.extend(extensions.PlotReport(
             ['validation/main/bleu'],
             'epoch',
             file_name=cargs.bleu_plot_file
-        ))
+        ), trigger=(cargs.extension_trigger, 'iteration'))
     else:
         logger.warning('PlotReport is not available.')
 
@@ -287,11 +294,11 @@ def train(args: argparse.Namespace):
 
         trainer.extend(extensions.Evaluator(
             v_iter1, model, converter=convert, device=cargs.gpu
-        ))
+        ), trigger=(cargs.extension_trigger * 5, 'iteration'))
         trainer.extend(CalculateBleu(
             v_iter2, model, converter=convert, device=cargs.gpu,
             key='validation/main/bleu'
-        ))
+        ), trigger=(cargs.extension_trigger * 5, 'iteration'))
 
         source_word = {index: word for word, index in source_vocab.items()}
         target_word = {index: word for word, index in target_vocab.items()}
@@ -317,9 +324,14 @@ def train(args: argparse.Namespace):
             logger.info('# result : ' + result_sentence)
             logger.info('# expect : ' + target_sentence)
 
-        trainer.extend(translate, trigger=(4000, 'iteration'))
+        trainer.extend(
+            translate,
+            trigger=(cargs.extension_trigger * 5, 'iteration')
+        )
 
-    trainer.extend(extensions.ProgressBar(update_interval=200))
+    trainer.extend(
+        extensions.ProgressBar(update_interval=cargs.extension_trigger // 5)
+    )
 
     if cargs.resume_file is not None:
         chainer.serializers.load_npz(cargs.resume_file, trainer)

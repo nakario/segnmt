@@ -61,6 +61,8 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--max-target-len', type=int, default=50,
                         help='')
+    parser.add_argument('--extension-trigger', type=int, default=100,
+                        help='The number of iterations to trigger extensions')
 
 
 def run(args: argparse.Namespace):
