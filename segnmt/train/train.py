@@ -237,10 +237,9 @@ def train(args: argparse.Namespace):
     updater = training.StandardUpdater(
         training_iter, optimizer, converter=convert, device=cargs.gpu)
     trainer = training.Trainer(updater, (cargs.epoch, 'epoch'))
-    trainer.extend(
-        extensions.LogReport(),
+    trainer.extend(extensions.LogReport(
         trigger=(cargs.extension_trigger, 'iteration')
-    )
+    ))
     trainer.extend(
         extensions.PrintReport(
             ['epoch', 'iteration', 'main/loss', 'validation/main/loss',
