@@ -200,6 +200,7 @@ def load_data(
 
 def train(args: argparse.Namespace):
     cargs = ConstArguments(**vars(args))
+    logger.info(f'cargs: {cargs}')
     model = EncoderDecoder(cargs.source_vocabulary_size,
                            cargs.source_word_embeddings_size,
                            cargs.encoder_hidden_layer_size,
