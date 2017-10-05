@@ -249,7 +249,7 @@ def train(args: argparse.Namespace):
     )
     trainer.extend(
         extensions.snapshot(),
-        trigger=(cargs.extension_trigger * 5, 'iteration'))
+        trigger=(cargs.extension_trigger * 50, 'iteration'))
     # Don't set `trigger` argument to `dump_graph`
     trainer.extend(extensions.dump_graph('main/loss'))
     if extensions.PlotReport.available():
