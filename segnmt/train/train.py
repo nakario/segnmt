@@ -255,14 +255,14 @@ def train(args: argparse.Namespace):
     if extensions.PlotReport.available():
         trainer.extend(extensions.PlotReport(
             ['main/loss', 'validation/main/loss'],
-            'epoch',
+            trigger=(cargs.extension_trigger, 'iteration'),
             file_name=cargs.loss_plot_file
-        ), trigger=(cargs.extension_trigger, 'iteration'))
+        ))
         trainer.extend(extensions.PlotReport(
             ['validation/main/bleu'],
-            'epoch',
+            trigger=(cargs.extension_trigger, 'iteration'),
             file_name=cargs.bleu_plot_file
-        ), trigger=(cargs.extension_trigger, 'iteration'))
+        ))
     else:
         logger.warning('PlotReport is not available.')
 
