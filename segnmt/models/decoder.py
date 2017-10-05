@@ -106,7 +106,7 @@ class Decoder(chainer.Chain):
                 (sentence_count, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
 
-            state = self.rnn(concatenated)
+            state = self.rnn(state, concatenated)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
