@@ -4,11 +4,16 @@ module main
 
 import argparse
 from importlib import import_module
+from logging import basicConfig
+from logging import INFO
 from pkgutil import iter_modules
 from typing import List
 from typing import Optional
 
 import segnmt.commands
+
+
+basicConfig(level=INFO)
 
 
 def main(arguments: Optional[List[str]] = None):
