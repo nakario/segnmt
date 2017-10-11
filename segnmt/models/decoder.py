@@ -96,7 +96,7 @@ class Decoder(chainer.Chain):
         sentence_count = encoded.shape[0]
         compute_context = self.attention(encoded)
         cell = Variable(
-            self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
+            self.xp.zeros((sentence_count, self.hidden_layer_size), 'f')
         )
         state = F.broadcast_to(
             self.bos_state, (sentence_count, self.hidden_layer_size)
