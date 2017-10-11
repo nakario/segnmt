@@ -95,6 +95,9 @@ class Decoder(chainer.Chain):
                   encoded: Variable, max_length: int = 100) -> List[ndarray]:
         sentence_count = encoded.shape[0]
         compute_context = self.attention(encoded)
+        cell = Variable(
+            self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
+        )
         state = F.broadcast_to(
             self.bos_state, (sentence_count, self.hidden_layer_size)
         )
@@ -109,7 +112,7 @@ class Decoder(chainer.Chain):
                 (sentence_count, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
 
-            state = self.rnn(state, concatenated)
+            cell, state = self.rnn(cell, state, concatenated)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
