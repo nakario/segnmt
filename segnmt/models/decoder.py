@@ -28,7 +28,7 @@ class Decoder(chainer.Chain):
             self.embed_id = L.EmbedID(vocabulary_size,
                                       word_embeddings_size,
                                       ignore_label=ignore_label)
-            self.rnn = L.StatelessGRU(
+            self.rnn = L.StatelessLSTM(
                 word_embeddings_size + encoder_output_size,
                 hidden_layer_size
             )
@@ -59,6 +59,9 @@ class Decoder(chainer.Chain):
         assert target.shape[0] == minibatch_size
 
         compute_context = self.attention(encoded)
+        cell = Variable(
+            self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
+        )
         state = F.broadcast_to(
             self.bos_state, (minibatch_size, self.hidden_layer_size)
         )
@@ -74,7 +77,7 @@ class Decoder(chainer.Chain):
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
 
-            state = self.rnn(state, concatenated)
+            cell, state = self.rnn(cell, state, concatenated)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
