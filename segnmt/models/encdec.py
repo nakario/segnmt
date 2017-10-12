@@ -72,11 +72,13 @@ class EncoderDecoder(chainer.Chain):
                 minibatch_size, max_sentence_size = source.shape
                 assert target.shape[0] == minibatch_size
                 encoded = self.enc(source)
-                keys = self.dec.generate_keys(encoded, target)
-                contexts.append(keys[0])
-                states.append(keys[1])
-                logits.append(keys[2])
-                betas.append(self.xp.zeros((minibatch_size, 1), 'f'))
+                c, s, l = zip(*self.dec.generate_keys(encoded, target))
+                contexts.extend(c)
+                states.extend(s)
+                logits.extend(l)
+                betas.extend(
+                    [self.xp.zeros((minibatch_size, 1), 'f')] * len(c)
+                )
         contexts = self.xp.dstack(contexts)
         states = self.xp.dstack(states)
         logits = self.xp.dstack(logits)
