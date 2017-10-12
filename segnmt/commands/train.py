@@ -47,6 +47,10 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--validation-target', default=None,
                         help='')
+    parser.add_argument('--similar-sentence-indices', default=None,
+                        help='')
+    parser.add_argument('--similar-sentence-indices-validation', default=None,
+                        help='')
     parser.add_argument('--loss-plot-file', type=str, default='loss.png',
                         help='')
     parser.add_argument('--bleu-plot-file', type=str, default='bleu.png',

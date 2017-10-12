@@ -53,6 +53,8 @@ class ConstArguments(NamedTuple):
     training_target: str
     validation_source: Optional[str]
     validation_target: Optional[str]
+    similar_sentence_indices: Optional[str]
+    similar_sentence_indices_validation: Optional[str]
     loss_plot_file: str
     bleu_plot_file: str
     resume_file: Optional[str]
@@ -191,7 +193,7 @@ def load_data(
         max_src_len: int,
         min_tgt_len: int,
         max_tgt_len: int,
-        similar_index: Optional[Union[Path, str]]
+        similar_index: Optional[Union[Path, str]] = None
 ) -> Union[
     List[Tuple[np.ndarray, np.ndarray]],
     List[Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]]
@@ -296,13 +298,17 @@ def train(args: argparse.Namespace):
         cargs.min_source_len,
         cargs.max_source_len,
         cargs.min_target_len,
-        cargs.max_target_len
+        cargs.max_target_len,
+        cargs.similar_sentence_indices
     )
 
     training_iter = chainer.iterators.SerialIterator(training_data,
                                                      cargs.minibatch_size)
+    converter = convert
+    if cargs.similar_sentence_indices is not None:
+        converter = convert_with_similar_sentences
     updater = training.StandardUpdater(
-        training_iter, optimizer, converter=convert, device=cargs.gpu)
+        training_iter, optimizer, converter=converter, device=cargs.gpu)
     trainer = training.Trainer(updater, (cargs.epoch, 'epoch'))
     trainer.extend(extensions.LogReport(
         trigger=(cargs.extension_trigger, 'iteration')
@@ -343,7 +349,8 @@ def train(args: argparse.Namespace):
             cargs.min_source_len,
             cargs.max_source_len,
             cargs.min_target_len,
-            cargs.max_target_len
+            cargs.max_target_len,
+            cargs.similar_sentence_indices_validation
         )
 
         v_iter1 = chainer.iterators.SerialIterator(
@@ -360,7 +367,7 @@ def train(args: argparse.Namespace):
         )
 
         trainer.extend(extensions.Evaluator(
-            v_iter1, model, converter=convert, device=cargs.gpu
+            v_iter1, model, converter=converter, device=cargs.gpu
         ), trigger=(cargs.extension_trigger * 5, 'iteration'))
         trainer.extend(CalculateBleu(
             v_iter2, model, converter=convert, device=cargs.gpu,
@@ -375,7 +382,8 @@ def train(args: argparse.Namespace):
         @chainer.training.make_extension(trigger=(200, 'iteration'))
         def translate(_):
             data = validation_data[np.random.choice(validation_size)]
-            source, target = convert([data], cargs.gpu)
+            converted = converter([data], cargs.gpu)
+            source, target = converted[:2]
             result = model.translate(source)[0].reshape((1, -1))
 
             source_sentence = ' '.join(
