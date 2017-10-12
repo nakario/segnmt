@@ -191,7 +191,8 @@ class Decoder(chainer.Chain):
                 assert state.shape == averaged_state.shape
                 gate = self.compute_gate(context, state, averaged_state)
                 state = \
-                    F.scale(averaged_state, gate) + F.scale(state, (1. - gate))
+                    F.scale(averaged_state, gate, axis=0)\
+                    + F.scale(state, (1. - gate), axis=0)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
