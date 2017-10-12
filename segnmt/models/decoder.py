@@ -164,8 +164,9 @@ class Decoder(chainer.Chain):
                 beta = context_memory[3]
                 assert beta.shape == (minibatch_size, context_memory_size)
 
-                matching_score = \
-                    F.softmax(self.E(context, associated_contexts), axis=1)
+                matching_score = F.softmax(
+                    self.E(context, associated_contexts, beta), axis=1
+                )
                 assert matching_score.shape == \
                     (minibatch_size, context_memory_size)
 
