@@ -152,7 +152,7 @@ def convert_with_similar_sentences(
         similar_sentences.append(
             convert([
                 sim_batch[i] if i < len(sim_batch)
-                else (np.array([], 'f'), np.array([], 'f'))
+                else (np.array([], 'i'), np.array([], 'i'))
                 for sim_batch in sim_batches
             ], device)
         )
