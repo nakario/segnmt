@@ -64,8 +64,6 @@ class ConstArguments(NamedTuple):
     max_target_len: int
     extension_trigger: int
 
-    run: Callable[[argparse.Namespace], None]
-
 
 class CalculateBleu(chainer.training.Extension):
     triger = (1, 'epoch')

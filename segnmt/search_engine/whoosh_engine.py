@@ -5,15 +5,16 @@ from typing import Tuple
 from typing import Union
 
 from progressbar import ProgressBar
-from whoosh.fields import ID
+from whoosh.fields import NGRAM
 from whoosh.fields import Schema
-from whoosh.fields import TEXT
+from whoosh.fields import STORED
 from whoosh.index import Index
 from whoosh.index import create_in
 from whoosh.index import open_dir
 from whoosh.qparser import OrGroup
 from whoosh.qparser import QueryParser
 
+from segnmt.misc.functions import flen
 from segnmt.search_engine.retriever import BaseEngine
 
 
@@ -26,28 +27,32 @@ class WhooshEngine(BaseEngine):
         self.index = index
         self.parser = QueryParser("SRC", index.schema, group=OrGroup)
 
-    def search(self, sentence: str) -> List[Tuple[str, str]]:
+    def search(self, sentence: str) -> List[Tuple[str, str, str]]:
         with self.index.searcher() as searcher:
             query = self.parser.parse(sentence)
             results = searcher.search(query, limit=self.limit)
-            return [(r["SRC"], r["TGT"]) for r in results]
+            return [(r["ID"], r["SRC"], r["TGT"]) for r in results]
 
 
-def create_index(index_path: Union[Path, str],
-                 source: List[str],
-                 target: List[str]) -> Index:
-    if isinstance(index_path, str):
-        index_path = Path(index_path)
-    assert index_path.exists()
-    assert len(source) == len(target)
-    schema = Schema(ID=ID, SRC=TEXT(stored=True), TGT=TEXT)
+def create_index(index_path: Path,
+                 source: Path,
+                 target: Path) -> Index:
+    assert source.exists()
+    assert target.exists()
+    sentence_count = flen(source)
+    assert flen(target) == sentence_count
+    index_path.mkdir(parents=True)
+    schema = Schema(ID=STORED, SRC=NGRAM(stored=True), TGT=STORED)
     ix = create_in(index_path.absolute(), schema)
     writer = ix.writer()
-    bar = ProgressBar(max_value=len(source))
+    bar = ProgressBar(max_value=sentence_count)
     logger.info(f'Creating index at {index_path.absolute()}')
-    for i, (src, tgt) in bar(enumerate(zip(source, target))):
-        writer.add_document(ID=str(i), SRC=src.strip(), TGT=tgt.strip())
+    with open(source) as src, open(target) as tgt:
+        for i, (s, t) in bar(enumerate(zip(src, tgt))):
+            writer.add_document(ID=str(i), SRC=s.strip(), TGT=t.strip())
+    logger.info('Start committing...')
     writer.commit()
+    logger.info('Finished committing')
     return ix
 
 

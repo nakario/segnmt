@@ -10,7 +10,7 @@ from typing import Tuple
 
 class BaseEngine(metaclass=ABCMeta):
     @abstractmethod
-    def search(self, sentence: str) -> Iterable[Tuple[str, str]]:
+    def search(self, sentence: str) -> List[Tuple[str, str, str]]:
         raise NotImplementedError()
 
 
@@ -25,10 +25,10 @@ class Retriever:
         self.limit = limit
         self.training = training
 
-    def retrieve(self, src: str) -> List[Tuple[str, str]]:
+    def retrieve(self, src: str) -> List[Tuple[str, str, str]]:
         pairs = self.engine.search(src)
         if self.training:
-            pairs = filter(lambda x: x[0] != src, pairs)
+            pairs = filter(lambda x: x[1] != src, pairs)
 
         reranked_pairs = self.rerank(pairs, src)
 
@@ -41,7 +41,7 @@ class Retriever:
         coverage = 0.0
         src_symbols = src.strip().split(" ")
         for pair in reranked_pairs:
-            sentences = [pair_[0] for pair_ in retrieved] + [pair[0]]
+            sentences = [pair_[1] for pair_ in retrieved] + [pair[1]]
             symbols = flatten([s.split(" ") for s in sentences])
             c_tmp = sum([s in symbols for s in src_symbols]) / len(src_symbols)
             if c_tmp > coverage:
@@ -49,11 +49,11 @@ class Retriever:
                 retrieved.append(pair)
         return retrieved
 
-    def rerank(self, pairs: Iterable[Tuple[str, str]], src: str) \
-            -> Iterable[Tuple[str, str]]:
+    def rerank(self, pairs: Iterable[Tuple[str, str, str]], src: str) \
+            -> Iterable[Tuple[str, str, str]]:
         return sorted(pairs,
                       reverse=True,
-                      key=lambda pair: self.similarity(pair[0], src))
+                      key=lambda pair: self.similarity(pair[1], src))
 
 
 def flatten(x: Iterable[Iterable[str]]) -> List[str]:

@@ -30,7 +30,9 @@ def main(arguments: Optional[List[str]] = None):
         command_module.define_parser(command_parser)
         command_parser.set_defaults(run=command_module.run)
     args = parser.parse_args(args=arguments)
-    args.run(args)
+    run = args.run
+    delattr(args, 'run')
+    run(args)
 
 
 if __name__ == '__main__':
