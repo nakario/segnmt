@@ -57,14 +57,6 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--resume-file', default=None,
                         help='')
-    parser.add_argument('--min-source-len', type=int, default=1,
-                        help='')
-    parser.add_argument('--max-source-len', type=int, default=50,
-                        help='')
-    parser.add_argument('--min-target-len', type=int, default=1,
-                        help='')
-    parser.add_argument('--max-target-len', type=int, default=50,
-                        help='')
     parser.add_argument('--extension-trigger', type=int, default=100,
                         help='The number of iterations to trigger extensions')
 

@@ -58,10 +58,6 @@ class ConstArguments(NamedTuple):
     loss_plot_file: str
     bleu_plot_file: str
     resume_file: Optional[str]
-    min_source_len: int
-    max_source_len: int
-    min_target_len: int
-    max_target_len: int
     extension_trigger: int
 
 
@@ -187,10 +183,6 @@ def load_data(
         target: Union[Path, str],
         source_vocab: Dict[str, int],
         target_vocab: Dict[str, int],
-        min_src_len: int,
-        max_src_len: int,
-        min_tgt_len: int,
-        max_tgt_len: int,
         similar_index: Optional[Union[Path, str]] = None
 ) -> Union[
     List[Tuple[np.ndarray, np.ndarray]],
@@ -204,7 +196,6 @@ def load_data(
     assert target.exists()
 
     data = []
-    skipped_indices = []
 
     with open(source) as src, open(target) as tgt:
         src_len = sum(1 for _ in src)
@@ -219,12 +210,6 @@ def load_data(
         for i, (s, t) in bar(enumerate(zip(src, tgt)), max_value=file_len):
             s_words = s.strip().split()
             t_words = t.strip().split()
-            if len(s_words) < min_src_len or max_src_len < len(s_words):
-                skipped_indices.append(i)
-                continue
-            if len(t_words) < min_tgt_len or max_tgt_len < len(t_words):
-                skipped_indices.append(i)
-                continue
             s_array = \
                 np.array([source_vocab.get(w, UNK) for w in s_words], 'i')
             t_array = \
@@ -233,10 +218,6 @@ def load_data(
 
     if similar_index is None:
         return data
-
-    skipped_indices = set(skipped_indices)
-    def file2data(index):
-        return index - sum(j < index for j in skipped_indices)
 
     if isinstance(similar_index, str):
         similar_index = Path(similar_index)
@@ -250,17 +231,10 @@ def load_data(
     logger.info(f'loading similar sentences from {similar_index.absolute()}')
     with open(similar_index) as f:
         bar = ProgressBar()
-        skip_count = 0
-        for i, line in bar(enumerate(f), max_value=file_len):
-            if i in skipped_indices:
-                skip_count += 1
-                continue
-            indices = [
-                int(i) for i in line.strip().split()
-                if i not in skipped_indices
-            ]
-            similar_data = [data[file2data(i)] for i in indices]
-            fulldata.append((*data[file2data(i)], similar_data))
+        for line in bar(f, max_value=file_len):
+            indices = [int(i) for i in line.strip().split()]
+            similar_data = [data[i] for i in indices]
+            fulldata.append((*data[i], similar_data))
 
     return fulldata
 
@@ -293,10 +267,6 @@ def train(args: argparse.Namespace):
         cargs.training_target,
         source_vocab,
         target_vocab,
-        cargs.min_source_len,
-        cargs.max_source_len,
-        cargs.min_target_len,
-        cargs.max_target_len,
         cargs.similar_sentence_indices
     )
 
@@ -344,10 +314,6 @@ def train(args: argparse.Namespace):
             cargs.validation_target,
             source_vocab,
             target_vocab,
-            cargs.min_source_len,
-            cargs.max_source_len,
-            cargs.min_target_len,
-            cargs.max_target_len,
             cargs.similar_sentence_indices_validation
         )
 
