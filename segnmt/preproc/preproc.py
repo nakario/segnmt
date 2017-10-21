@@ -11,9 +11,8 @@ from segnmt.misc.functions import flen
 from segnmt.search_engine.retriever import BaseEngine
 from segnmt.search_engine.retriever import Retriever
 from segnmt.search_engine.similarity import fuzzy_word_level_similarity
-from segnmt.search_engine.whoosh_engine import create_index
-from segnmt.search_engine.whoosh_engine import open_index
-from segnmt.search_engine.whoosh_engine import WhooshEngine
+from segnmt.search_engine.elastic_engine import ElasticEngine
+from segnmt.search_engine.elastic_engine import create_index
 
 
 class ConstArguments(NamedTuple):
@@ -153,13 +152,8 @@ def preproc(args: Namespace):
     )
     make_voc(source, output / Path('source_voc'))
     make_voc(target, output / Path('target_voc'))
-    index = output / Path('index')
-    if not index.exists():
-        ix = create_index(index, source, target)
-    else:
-        logger.info(f'Open index at {index.absolute()}')
-        ix = open_index(index)
-    engine = WhooshEngine(100, ix)
+    create_index('segnmt', 'pairs', source, target)
+    engine = ElasticEngine(100, 'segnmt', 'pairs')
     make_sim(
         source, source,
         output / Path('train_sim'),
