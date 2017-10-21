@@ -165,6 +165,8 @@ def preproc(args: Namespace):
         output / Path('train_sim'),
         engine
     )
+    if cargs.source_dev is None or cargs.target_dev is None:
+        return
     source_dev = output / Path('source_dev')
     target_dev = output / Path('target_dev')
     copy_data_with_limit(
