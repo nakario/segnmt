@@ -103,25 +103,22 @@ def make_voc(
 
 def make_sim(
         data: Union[Path, str],
-        train_data: Union[Path, str],
         sim_file: Union[Path, str],
-        engine: BaseEngine
+        engine: BaseEngine,
+        training: bool
 ):
     """Create a list of indices of similar sentences."""
     if isinstance(data, str):
         data = Path(data)
-    if isinstance(train_data, str):
-        train_data = Path(train_data)
     if isinstance(sim_file, str):
         sim_file = Path(sim_file)
     assert data.exists()
-    assert train_data.exists()
     assert sim_file.parent.exists()
 
     retriever = Retriever(
         engine,
         fuzzy_word_level_similarity,
-        training=data == train_data
+        training=training
     )
     src_len = flen(data)
     with open(data) as src, open(sim_file, 'w') as sim:
@@ -155,9 +152,10 @@ def preproc(args: Namespace):
     create_index('segnmt', 'pairs', source, target)
     engine = ElasticEngine(100, 'segnmt', 'pairs')
     make_sim(
-        source, source,
+        source,
         output / Path('train_sim'),
-        engine
+        engine,
+        True
     )
     if cargs.source_dev is None or cargs.target_dev is None:
         return
@@ -170,7 +168,8 @@ def preproc(args: Namespace):
         1, cargs.max_target_len
     )
     make_sim(
-        source_dev, source,
+        source_dev,
         output / Path('dev_sim'),
-        engine
+        engine,
+        False
     )
