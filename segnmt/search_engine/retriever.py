@@ -25,10 +25,10 @@ class Retriever:
         self.limit = limit
         self.training = training
 
-    def retrieve(self, src: str) -> List[Tuple[str, str, str]]:
+    def retrieve(self, src: str, index: int) -> List[Tuple[str, str, str]]:
         pairs = self.engine.search(src)
         if self.training:
-            pairs = filter(lambda x: x[1] != src, pairs)
+            pairs = filter(lambda x: x[0] != str(index), pairs)
 
         reranked_pairs = self.rerank(pairs, src)
 

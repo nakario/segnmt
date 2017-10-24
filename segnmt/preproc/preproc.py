@@ -127,8 +127,8 @@ def make_sim(
     with open(data) as src, open(sim_file, 'w') as sim:
         logger.info(f'Making similarity indices from {data.absolute()}')
         bar = ProgressBar()
-        for sentence in bar(src, max_value=src_len):
-            indices, _, _ = zip(*retriever.retrieve(sentence.strip()))
+        for i, sentence in bar(enumerate(src), max_value=src_len):
+            indices, _, _ = zip(*retriever.retrieve(sentence.strip(), i))
             sim.write(' '.join(indices) + '\n')
 
 
