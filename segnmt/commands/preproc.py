@@ -17,6 +17,8 @@ def define_parser(parser):
                         help='')
     parser.add_argument('--target-dev', type=str,
                         help='')
+    parser.add_argument('--use-existing-files', action='store_true',
+                        help='')
 
 
 def run(args):

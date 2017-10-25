@@ -23,6 +23,7 @@ class ConstArguments(NamedTuple):
     max_target_len: int
     source_dev: str
     target_dev: str
+    use_existing_files: bool
 
 
 logger = getLogger(__name__)
@@ -141,16 +142,16 @@ def preproc(args: Namespace):
     if not output.exists():
         logger.warning(f'{output.absolute()} does not exist')
         output.mkdir(parents=True, exist_ok=True)
-    copy_data_with_limit(
-        cargs.source, cargs.target,
-        source, target,
-        1, cargs.max_source_len,
-        1, cargs.max_target_len
-    )
-    make_voc(source, output / Path('source_voc'))
-    make_voc(target, output / Path('target_voc'))
-    create_index('segnmt', 'pairs', source, target)
-    engine = ElasticEngine(100, 'segnmt', 'pairs')
+    if not cargs.use_existing_files:
+        copy_data_with_limit(
+            cargs.source, cargs.target,
+            source, target,
+            1, cargs.max_source_len,
+            1, cargs.max_target_len
+        )
+        make_voc(source, output / Path('source_voc'))
+        make_voc(target, output / Path('target_voc'))
+        create_index('segnmt', 'pairs', source, target)
     make_sim(
         source,
         output / Path('train_sim'),
