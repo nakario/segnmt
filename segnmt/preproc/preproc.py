@@ -109,8 +109,12 @@ def retrieve_indices(sentence: str, i: int, training: bool) -> List[str]:
         fuzzy_word_level_similarity,
         training=training
     )
-    retrieved_indices, _, _ = zip(*retriever.retrieve(sentence, i))
-    return retrieved_indices
+    retrieved = retriever.retrieve(sentence, i)
+    if len(retrieved) > 0:
+        retrieved_indices, _, _ = zip(*retrieved)
+        return [str(i)] + list(retrieved_indices)
+    else:
+        return [str(i)]
 
 
 def make_sim(
