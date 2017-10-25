@@ -2,13 +2,13 @@ from argparse import Namespace
 from collections import Counter
 from logging import getLogger
 from pathlib import Path
+from typing import List
 from typing import NamedTuple
 from typing import Union
 
-from progressbar import ProgressBar
+from joblib import delayed
+from joblib import Parallel
 
-from segnmt.misc.functions import flen
-from segnmt.search_engine.retriever import BaseEngine
 from segnmt.search_engine.retriever import Retriever
 from segnmt.search_engine.similarity import fuzzy_word_level_similarity
 from segnmt.search_engine.elastic_engine import ElasticEngine
@@ -102,10 +102,20 @@ def make_voc(
     logger.info(f'Size of vocabulary : {len(vocab)}')
 
 
+def retrieve_indices(sentence: str, i: int, training: bool) -> List[str]:
+    engine = ElasticEngine(100, 'segnmt', 'pairs')
+    retriever = Retriever(
+        engine,
+        fuzzy_word_level_similarity,
+        training=training
+    )
+    retrieved_indices, _, _ = zip(*retriever.retrieve(sentence, i))
+    return retrieved_indices
+
+
 def make_sim(
         data: Union[Path, str],
         sim_file: Union[Path, str],
-        engine: BaseEngine,
         training: bool
 ):
     """Create a list of indices of similar sentences."""
@@ -116,17 +126,16 @@ def make_sim(
     assert data.exists()
     assert sim_file.parent.exists()
 
-    retriever = Retriever(
-        engine,
-        fuzzy_word_level_similarity,
-        training=training
-    )
-    src_len = flen(data)
-    with open(data) as src, open(sim_file, 'w') as sim:
-        logger.info(f'Making similarity indices from {data.absolute()}')
-        bar = ProgressBar()
-        for i, sentence in bar(enumerate(src), max_value=src_len):
-            indices, _, _ = zip(*retriever.retrieve(sentence.strip(), i))
+    indices_list: List[List[str]]
+    with open(data) as src:
+        sentence_list = src.readlines()
+        indices_list = Parallel(n_jobs=-1, verbose=1)([
+            delayed(retrieve_indices)(sentence.strip(), i, training)
+            for sentence, i in zip(sentence_list, range(len(sentence_list)))
+        ])
+
+    with open(sim_file, 'w') as sim:
+        for indices in indices_list:
             sim.write(' '.join(indices) + '\n')
 
 
@@ -155,7 +164,6 @@ def preproc(args: Namespace):
     make_sim(
         source,
         output / Path('train_sim'),
-        engine,
         True
     )
     if cargs.source_dev is None or cargs.target_dev is None:
@@ -171,6 +179,5 @@ def preproc(args: Namespace):
     make_sim(
         source_dev,
         output / Path('dev_sim'),
-        engine,
         False
     )
