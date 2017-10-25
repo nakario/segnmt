@@ -174,12 +174,13 @@ def preproc(args: Namespace):
         return
     source_dev = output / Path('source_dev')
     target_dev = output / Path('target_dev')
-    copy_data_with_limit(
-        cargs.source_dev, source_dev,
-        cargs.target_dev, target_dev,
-        1, cargs.max_source_len,
-        1, cargs.max_target_len
-    )
+    if not cargs.use_existing_files:
+        copy_data_with_limit(
+            cargs.source_dev, cargs.target_dev,
+            source_dev, target_dev,
+            1, cargs.max_source_len,
+            1, cargs.max_target_len
+        )
     make_sim(
         source_dev,
         output / Path('dev_sim'),
