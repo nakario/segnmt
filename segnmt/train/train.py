@@ -447,9 +447,9 @@ def train(args: argparse.Namespace):
             logger.info('# output    : ' + result_sentence)
             logger.info('# reference : ' + target_sentence)
             if similars is not None:
-                for i, similar in enumerate(similars):
+                for i, pair in enumerate(similars):
                     retrieved_sentence = ' '.join(
-                        [source_word[int(word)] for word in similar[0]]
+                        [source_word[int(word)] for word in pair[0][0]]
                     )
                     logger.info(f'# retrieved[{i}] : {retrieved_sentence}')
 
