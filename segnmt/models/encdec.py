@@ -44,6 +44,9 @@ class EncoderDecoder(chainer.Chain):
                 List[Tuple[ndarray, ndarray]]
             ] = None
     ) -> Variable:
+        # source.shape == (minibatch_size, source_max_sentence_size)
+        # target.shape == (minibatch_size, target_max_sentence_size)
+        # len(similar_sentences) == max_retrieved_count
         encoded = self.enc(source)
         context_memory = None
         if similar_sentences is not None:
@@ -53,6 +56,7 @@ class EncoderDecoder(chainer.Chain):
         return loss
 
     def translate(self, sentences: ndarray) -> List[ndarray]:
+        # sentences.shape == (sentence_count, max_sentence_size)
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             encoded = self.enc(sentences)
             translated = self.dec.translate(encoded)
@@ -62,7 +66,7 @@ class EncoderDecoder(chainer.Chain):
             self,
             pairs: List[Tuple[ndarray, ndarray]],
     ) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
-        max_retrieved_count = len(pairs)
+        # len(pairs) == max_retrieved_count
         contexts = []
         states = []
         logits = []
