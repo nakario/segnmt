@@ -398,7 +398,7 @@ def train(args: argparse.Namespace):
             v_iter1, model, converter=converter, device=cargs.gpu
         ), trigger=(cargs.extension_trigger * 5, 'iteration'))
         trainer.extend(CalculateBleu(
-            v_iter2, model, converter=convert, device=cargs.gpu,
+            v_iter2, model, converter=converter, device=cargs.gpu,
             key='validation/main/bleu'
         ), trigger=(cargs.extension_trigger * 5, 'iteration'))
 
