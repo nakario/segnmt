@@ -69,9 +69,22 @@ class CalculateBleu(chainer.training.Extension):
             self,
             validation_iter: chainer.iterators.SerialIterator,
             model: EncoderDecoder,
-            converter: Callable[
-                [List[Tuple[np.ndarray, np.ndarray]], Optional[int]],
-                Tuple[ndarray, ndarray]
+            converter: Union[
+                Callable[
+                    [List[Tuple[np.ndarray, np.ndarray]], Optional[int]],
+                    Tuple[ndarray, ndarray]
+                ],
+                Callable[
+                    [
+                        List[Tuple[
+                            np.ndarray,
+                            np.ndarray,
+                            List[Tuple[np.ndarray, np.ndarray]]
+                        ]],
+                        Optional[int]
+                    ],
+                    Tuple[ndarray, ndarray, List[Tuple[ndarray, ndarray]]]
+                ]
             ],
             key: str,
             device: int
@@ -92,8 +105,12 @@ class CalculateBleu(chainer.training.Extension):
                 list_of_references.extend(
                     [[sentence.tolist()] for sentence in target_sentences]
                 )
-                source, _ = self.converter(minibatch, self.device)
-                results = self.model.translate(source)
+                converted = self.converter(minibatch, self.device)
+                source = converted[0]
+                similars = None
+                if len(converted) == 3:
+                    similars = converted[2]
+                results = self.model.translate(source, similars)
                 hypotheses.extend(
                     # Remove <EOS>
                     [sentence.tolist()[:-1] for sentence in results]
@@ -412,7 +429,10 @@ def train(args: argparse.Namespace):
             data = validation_data[np.random.choice(validation_size)]
             converted = converter([data], cargs.gpu)
             source, target = converted[:2]
-            result = model.translate(source)[0].reshape((1, -1))
+            similars = None
+            if len(converted) == 3:
+                similars = converted[2]
+            result = model.translate(source, similars)[0].reshape((1, -1))
 
             source_sentence = ' '.join(
                 [source_word[int(word)] for word in source[0]]
@@ -423,9 +443,15 @@ def train(args: argparse.Namespace):
             result_sentence = ' '.join(
                 [target_word[int(word)] for word in result[0]]
             )
-            logger.info('# source : ' + source_sentence)
-            logger.info('# result : ' + result_sentence)
-            logger.info('# expect : ' + target_sentence)
+            logger.info('# source    : ' + source_sentence)
+            logger.info('# output    : ' + result_sentence)
+            logger.info('# reference : ' + target_sentence)
+            if similars is not None:
+                for i, similar in enumerate(similars):
+                    retrieved_sentence = ' '.join(
+                        [source_word[int(word)] for word in similar[0]]
+                    )
+                    logger.info(f'# retrieved[{i}] : {retrieved_sentence}')
 
         trainer.extend(
             translate,

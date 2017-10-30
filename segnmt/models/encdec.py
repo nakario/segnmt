@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -8,6 +9,9 @@ from chainer import Variable
 from segnmt.misc.typing import ndarray
 from segnmt.models.encoder import Encoder
 from segnmt.models.decoder import Decoder
+
+
+logger = getLogger(__name__)
 
 
 class EncoderDecoder(chainer.Chain):
@@ -55,11 +59,20 @@ class EncoderDecoder(chainer.Chain):
         chainer.report({'loss': loss}, self)
         return loss
 
-    def translate(self, sentences: ndarray) -> List[ndarray]:
+    def translate(
+            self,
+            sentences: ndarray,
+            similar_sentences: Optional[
+                List[Tuple[ndarray, ndarray]]
+            ]) -> List[ndarray]:
         # sentences.shape == (sentence_count, max_sentence_size)
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             encoded = self.enc(sentences)
-            translated = self.dec.translate(encoded)
+            context_memory = None
+            if similar_sentences is not None:
+                context_memory = \
+                    self.generate_context_memory(similar_sentences)
+            translated = self.dec.translate(encoded, 100, context_memory)
             return translated
 
     def generate_context_memory(
