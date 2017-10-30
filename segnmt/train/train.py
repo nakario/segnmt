@@ -182,8 +182,7 @@ def load_data(
         source: Union[Path, str],
         target: Union[Path, str],
         source_vocab: Dict[str, int],
-        target_vocab: Dict[str, int],
-        similar_index: Optional[Union[Path, str]] = None
+        target_vocab: Dict[str, int]
 ) -> Union[
     List[Tuple[np.ndarray, np.ndarray]],
     List[Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]]
