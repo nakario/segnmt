@@ -216,24 +216,87 @@ def load_data(
                 np.array([target_vocab.get(w, UNK) for w in t_words], 'i')
             data.append((s_array, t_array))
 
-    if similar_index is None:
-        return data
+    return data
 
-    if isinstance(similar_index, str):
-        similar_index = Path(similar_index)
-    assert similar_index.exists()
 
-    with open(similar_index) as sim:
-        assert file_len == sum(1 for _ in sim)
+def load_train_data(
+        source: Union[Path, str],
+        target: Union[Path, str],
+        source_vocab: Dict[str, int],
+        target_vocab: Dict[str, int],
+        similar_indices: Union[Path, str]
+) -> List[Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]]:
+    if isinstance(source, str):
+        source = Path(source)
+    if isinstance(target, str):
+        target = Path(target)
+    if isinstance(similar_indices, str):
+        similar_indices = Path(similar_indices)
+    assert source.exists()
+    assert target.exists()
+    assert similar_indices.exists()
+
+    data = load_data(source, target, source_vocab, target_vocab)
+
+    with open(similar_indices) as sim:
+        assert len(data) == sum(1 for _ in sim)
 
     fulldata = []
 
-    logger.info(f'loading similar sentences from {similar_index.absolute()}')
-    with open(similar_index) as f:
+    logger.info(f'loading similar sentences from {similar_indices.absolute()}')
+    with open(similar_indices) as f:
         bar = ProgressBar()
-        for line in bar(f, max_value=file_len):
-            indices = [int(i) for i in line.strip().split()]
-            similar_data = [data[i] for i in indices]
+        for i, line in bar(enumerate(f), max_value=len(data)):
+            indices = [int(i) for i in line.strip().split()][1:]
+            similar_data = [data[index] for index in indices]
+            fulldata.append((*data[i], similar_data))
+
+    return fulldata
+
+
+def load_validation_data(
+        train_source: Union[Path, str],
+        train_target: Union[Path, str],
+        source: Union[Path, str],
+        target: Union[Path, str],
+        source_vocab: Dict[str, int],
+        target_vocab: Dict[str, int],
+        similar_indices: Union[Path, str]
+) -> List[Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]]:
+    if isinstance(train_source, str):
+        train_source = Path(train_source)
+    if isinstance(train_target, str):
+        train_target = Path(train_target)
+    if isinstance(source, str):
+        source = Path(source)
+    if isinstance(target, str):
+        target = Path(target)
+    if isinstance(similar_indices, str):
+        similar_indices = Path(similar_indices)
+    assert train_source.exists()
+    assert train_target.exists()
+    assert source.exists()
+    assert target.exists()
+    assert similar_indices.exists()
+
+    train_data = load_data(
+        train_source, train_target,
+        source_vocab, target_vocab
+    )
+
+    data = load_data(source, target, source_vocab, target_vocab)
+
+    with open(similar_indices) as sim:
+        assert len(data) == sum(1 for _ in sim)
+
+    fulldata = []
+
+    logger.info(f'loading similar sentences from {similar_indices.absolute()}')
+    with open(similar_indices) as f:
+        bar = ProgressBar()
+        for i, line in bar(enumerate(f), max_value=len(data)):
+            indices = [int(i) for i in line.strip().split()][1:]
+            similar_data = [train_data[index] for index in indices]
             fulldata.append((*data[i], similar_data))
 
     return fulldata
@@ -262,7 +325,7 @@ def train(args: argparse.Namespace):
     source_vocab = load_vocab(cargs.source_vocab, cargs.source_vocabulary_size)
     target_vocab = load_vocab(cargs.target_vocab, cargs.target_vocabulary_size)
 
-    training_data = load_data(
+    training_data = load_train_data(
         cargs.training_source,
         cargs.training_target,
         source_vocab,
@@ -309,7 +372,9 @@ def train(args: argparse.Namespace):
 
     if cargs.validation_source is not None and \
             cargs.validation_target is not None:
-        validation_data = load_data(
+        validation_data = load_validation_data(
+            cargs.training_source,
+            cargs.training_target,
             cargs.validation_source,
             cargs.validation_target,
             source_vocab,
