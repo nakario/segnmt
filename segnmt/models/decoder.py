@@ -142,57 +142,7 @@ class Decoder(chainer.Chain):
             cell, state = self.rnn(cell, state, concatenated)
 
             if context_memory is not None:
-                associated_contexts = context_memory[0]
-                context_memory_size = associated_contexts.shape[2]
-                assert associated_contexts.shape == (
-                    minibatch_size,
-                    self.encoder_output_size,
-                    context_memory_size
-                )
-                associated_states = context_memory[1]
-                assert associated_states.shape == (
-                    minibatch_size,
-                    self.hidden_layer_size,
-                    context_memory_size
-                )
-                associated_logit = context_memory[2]
-                assert associated_logit.shape == (
-                    minibatch_size,
-                    self.vocabulary_size,
-                    context_memory_size
-                )
-                beta = context_memory[3]
-                assert beta.shape == (minibatch_size, context_memory_size)
-
-                matching_score = F.softmax(
-                    self.E(context, associated_contexts, beta), axis=1
-                )
-                assert matching_score.shape == \
-                    (minibatch_size, context_memory_size)
-
-                averaged_state = F.average(
-                    F.broadcast_to(
-                        F.reshape(
-                            matching_score,
-                            (
-                                minibatch_size,
-                                1,
-                                context_memory_size
-                            )
-                        ),
-                        (
-                            minibatch_size,
-                            self.hidden_layer_size,
-                            context_memory_size
-                        )
-                    ) * associated_states,
-                    axis=2
-                )
-                assert state.shape == averaged_state.shape
-                gate = self.compute_gate(context, state, averaged_state)
-                state = \
-                    F.scale(averaged_state, gate, axis=0)\
-                    + F.scale(state, (1. - gate), axis=0)
+                state = self.fusion_state(context_memory, context, state)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
@@ -205,6 +155,65 @@ class Decoder(chainer.Chain):
             previous_embedding = self.embed_id(target_id)
 
         return total_loss / total_predictions
+
+    def fusion_state(
+            self,
+            context_memory: Tuple[ndarray, ndarray, ndarray, ndarray],
+            context: Variable,
+            state: Variable
+    ) -> Variable:
+        sentence_count = state.shape[0]
+        associated_contexts = context_memory[0]
+        context_memory_size = associated_contexts.shape[2]
+        assert associated_contexts.shape == (
+            sentence_count,
+            self.encoder_output_size,
+            context_memory_size
+        )
+        associated_states = context_memory[1]
+        assert associated_states.shape == (
+            sentence_count,
+            self.hidden_layer_size,
+            context_memory_size
+        )
+        associated_logit = context_memory[2]
+        assert associated_logit.shape == (
+            sentence_count,
+            self.vocabulary_size,
+            context_memory_size
+        )
+        beta = context_memory[3]
+        assert beta.shape == (sentence_count, context_memory_size)
+
+        matching_score = F.softmax(
+            self.E(context, associated_contexts, beta), axis=1
+        )
+        assert matching_score.shape == \
+            (sentence_count, context_memory_size)
+
+        averaged_state = F.average(
+            F.broadcast_to(
+                F.reshape(
+                    matching_score,
+                    (
+                        sentence_count,
+                        1,
+                        context_memory_size
+                    )
+                ),
+                (
+                    sentence_count,
+                    self.hidden_layer_size,
+                    context_memory_size
+                )
+            ) * associated_states,
+            axis=2
+        )
+        assert state.shape == averaged_state.shape
+        gate = self.compute_gate(context, state, averaged_state)
+
+        return F.scale(averaged_state, gate, axis=0) \
+            + F.scale(state, (1. - gate), axis=0)
 
     def generate_keys(
             self,
@@ -270,57 +279,7 @@ class Decoder(chainer.Chain):
             cell, state = self.rnn(cell, state, concatenated)
 
             if context_memory is not None:
-                associated_contexts = context_memory[0]
-                context_memory_size = associated_contexts.shape[2]
-                assert associated_contexts.shape == (
-                    sentence_count,
-                    self.encoder_output_size,
-                    context_memory_size
-                )
-                associated_states = context_memory[1]
-                assert associated_states.shape == (
-                    sentence_count,
-                    self.hidden_layer_size,
-                    context_memory_size
-                )
-                associated_logit = context_memory[2]
-                assert associated_logit.shape == (
-                    sentence_count,
-                    self.vocabulary_size,
-                    context_memory_size
-                )
-                beta = context_memory[3]
-                assert beta.shape == (sentence_count, context_memory_size)
-
-                matching_score = F.softmax(
-                    self.E(context, associated_contexts, beta), axis=1
-                )
-                assert matching_score.shape == \
-                    (sentence_count, context_memory_size)
-
-                averaged_state = F.average(
-                    F.broadcast_to(
-                        F.reshape(
-                            matching_score,
-                            (
-                                sentence_count,
-                                1,
-                                context_memory_size
-                            )
-                        ),
-                        (
-                            sentence_count,
-                            self.hidden_layer_size,
-                            context_memory_size
-                        )
-                    ) * associated_states,
-                    axis=2
-                )
-                assert state.shape == averaged_state.shape
-                gate = self.compute_gate(context, state, averaged_state)
-                state = \
-                    F.scale(averaged_state, gate, axis=0)\
-                    + F.scale(state, (1. - gate), axis=0)
+                state = self.fusion_state(context_memory, context, state)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
