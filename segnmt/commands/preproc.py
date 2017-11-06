@@ -9,15 +9,23 @@ def define_parser(parser):
                         help='path of target document')
     parser.add_argument('output', type=str,
                         help='path of output directory')
-    parser.add_argument('--max-source-len', type=int,
+    parser.add_argument('--max-source-len', type=int, default=70,
                         help='')
-    parser.add_argument('--max-target-len', type=int,
+    parser.add_argument('--max-target-len', type=int, default=70,
                         help='')
     parser.add_argument('--source-dev', type=str,
                         help='')
     parser.add_argument('--target-dev', type=str,
                         help='')
-    parser.add_argument('--use-existing-files', action='store_true',
+    parser.add_argument('--skip-create-index', action='store_true',
+                        help='')
+    parser.add_argument('--skip-make-sim', action='store_true',
+                        help='')
+    parser.add_argument('--skip-create-bpe', action='store_true',
+                        help='')
+    parser.add_argument('--skip-bpe-encode', action='store_true',
+                        help='')
+    parser.add_argument('--skip-make-voc', action='store_true',
                         help='')
 
 

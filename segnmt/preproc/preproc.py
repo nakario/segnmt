@@ -9,6 +9,8 @@ from typing import Union
 from joblib import delayed
 from joblib import Parallel
 
+from segnmt.external_libs.bpe import learn_bpe
+from segnmt.external_libs.bpe import apply_bpe
 from segnmt.search_engine.retriever import Retriever
 from segnmt.search_engine.similarity import fuzzy_word_level_similarity
 from segnmt.search_engine.elastic_engine import ElasticEngine
@@ -23,7 +25,11 @@ class ConstArguments(NamedTuple):
     max_target_len: int
     source_dev: str
     target_dev: str
-    use_existing_files: bool
+    skip_create_index: bool
+    skip_make_sim: bool
+    skip_create_bpe: bool
+    skip_bpe_encode: bool
+    skip_make_voc: bool
 
 
 logger = getLogger(__name__)
@@ -65,6 +71,54 @@ def copy_data_with_limit(
                 continue
             src_c.write(s)
             tgt_c.write(t)
+
+
+def create_bpe_file(
+        document: Union[Path, str],
+        bpe_file: Union[Path, str]
+):
+    if isinstance(document, str):
+        document = Path(document)
+    if isinstance(bpe_file, str):
+        bpe_file = Path(bpe_file)
+    assert document.exists()
+    assert bpe_file.parent.exists()
+
+    logger.info('Start learning BPE')
+    with open(document) as doc, open(bpe_file, 'w') as out:
+        iterable = map(lambda x: x.strip().split(), doc)
+        learn_bpe.learn_bpe_from_sentence_iterable(
+            iterable,
+            out,
+            symbols=10000,
+            min_frequency=2,
+            verbose=False
+        )
+
+
+def bpe_encode(
+        document: Union[Path, str],
+        compressed: Union[Path, str],
+        bpe_file: Union[Path, str]
+):
+    if isinstance(document, str):
+        document = Path(document)
+    if isinstance(compressed, str):
+        compressed = Path(compressed)
+    if isinstance(bpe_file, str):
+        bpe_file = Path(bpe_file)
+    assert document.exists()
+    assert compressed.parent.exists()
+    assert bpe_file.exists()
+
+    with open(bpe_file) as file:
+        bpe = apply_bpe.BPE(file, separator='._@@@')
+    logger.info(f'Start applying BPE to {document.absolute()}')
+    with open(document) as src, open(compressed, 'w') as src_bpe:
+        for line in src:
+            src_bpe.write(
+                ' '.join(bpe.segment_splitted(line.strip().split())) + '\n'
+            )
 
 
 def make_voc(
@@ -149,40 +203,63 @@ def make_config(config_file: Path):
 
 def preproc(args: Namespace):
     cargs = ConstArguments(**vars(args))
-    source = Path(cargs.output) / Path('source')
-    target = Path(cargs.output) / Path('target')
+
     output = Path(cargs.output)
     if not output.exists():
         logger.warning(f'{output.absolute()} does not exist')
         output.mkdir(parents=True, exist_ok=True)
-    if not cargs.use_existing_files:
-        copy_data_with_limit(
-            cargs.source, cargs.target,
-            source, target,
-            1, cargs.max_source_len,
-            1, cargs.max_target_len
-        )
-        make_voc(source, output / Path('source_voc'))
-        make_voc(target, output / Path('target_voc'))
-        create_index('segnmt', 'pairs', source, target)
-    make_sim(
-        source,
-        output / Path('train_sim'),
-        True
+        logger.info(f'created {output.absolute()}')
+    source = output / Path('source')
+    target = output / Path('target')
+
+    copy_data_with_limit(
+        cargs.source, cargs.target,
+        source, target,
+        1, cargs.max_source_len,
+        1, cargs.max_target_len
     )
+    if not cargs.skip_create_index:
+        create_index('segnmt', 'pairs', source, target)
+    if not cargs.skip_make_sim:
+        make_sim(
+            source,
+            output / Path('train_sim'),
+            True
+        )
+
+    bpe_source = output / Path('bpe_source')
+    bpe_target = output / Path('bpe_target')
+    if not cargs.skip_create_bpe:
+        create_bpe_file(source, bpe_source)
+        create_bpe_file(target, bpe_target)
+    source_compressed = output / Path('source_compressed')
+    target_compressed = output / Path('target_compressed')
+    if not cargs.skip_bpe_encode:
+        bpe_encode(source, source_compressed, bpe_source)
+        bpe_encode(target, target_compressed, bpe_target)
+    if not cargs.skip_make_voc:
+        make_voc(source_compressed, output / Path('source_bpe_voc'))
+        make_voc(target_compressed, output / Path('target_bpe_voc'))
+
     if cargs.source_dev is None or cargs.target_dev is None:
         return
     source_dev = output / Path('source_dev')
     target_dev = output / Path('target_dev')
-    if not cargs.use_existing_files:
-        copy_data_with_limit(
-            cargs.source_dev, cargs.target_dev,
-            source_dev, target_dev,
-            1, cargs.max_source_len,
-            1, cargs.max_target_len
-        )
-    make_sim(
-        source_dev,
-        output / Path('dev_sim'),
-        False
+    copy_data_with_limit(
+        cargs.source_dev, cargs.target_dev,
+        source_dev, target_dev,
+        1, cargs.max_source_len,
+        1, cargs.max_target_len
     )
+    if not cargs.skip_make_sim:
+        make_sim(
+            source_dev,
+            output / Path('dev_sim'),
+            False
+        )
+
+    source_dev_compressed = output / Path('source_dev_compressed')
+    target_dev_compressed = output / Path('target_dev_compressed')
+    if not cargs.skip_bpe_encode:
+        bpe_encode(source_dev, source_dev_compressed, bpe_source)
+        bpe_encode(target_dev, target_dev_compressed, bpe_target)
