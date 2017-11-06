@@ -135,7 +135,7 @@ def make_sim(
         sentence_list = src.readlines()
         indices_list = Parallel(n_jobs=-1, verbose=1)([
             delayed(retrieve_indices)(sentence.strip(), i, training)
-            for sentence, i in zip(sentence_list, range(len(sentence_list)))
+            for i, sentence in enumerate(sentence_list)
         ])
 
     with open(sim_file, 'w') as sim:
