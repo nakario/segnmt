@@ -61,6 +61,19 @@ class ConstArguments(NamedTuple):
     extension_trigger: int
 
 
+def decode_bpe(sentence: List[str], separator: str = '._@@@') -> List[str]:
+    decoded = []
+    merge_to_previous = False
+    for word in sentence:
+        if merge_to_previous:
+            decoded[-1] = decoded[-1][:-len(separator)] + word
+        else:
+            decoded.append(word)
+
+        merge_to_previous = word.endswith(separator)
+    return decoded
+
+
 class CalculateBleu(chainer.training.Extension):
     triger = (1, 'epoch')
     priority = chainer.training.PRIORITY_WRITER
@@ -86,35 +99,42 @@ class CalculateBleu(chainer.training.Extension):
                     Tuple[ndarray, ndarray, List[Tuple[ndarray, ndarray]]]
                 ]
             ],
+            id2word: Dict[int, str],
             key: str,
             device: int
     ):
         self.iter = validation_iter
         self.model = model
         self.converter = converter
+        self.id2word = id2word
         self.device = device
         self.key = key
 
     def __call__(self, trainer):
-        list_of_references = []
-        hypotheses = []
+        list_of_references: List[List[List[str]]] = []
+        hypotheses: List[List[str]] = []
         self.iter.reset()
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             for minibatch in self.iter:
                 target_sentences: List[np.ndarray] = tuple(zip(*minibatch))[1]
-                list_of_references.extend(
-                    [[sentence.tolist()] for sentence in target_sentences]
-                )
+                list_of_references.extend([
+                    [decode_bpe([
+                        self.id2word.get(id_, '<UNK>')
+                        for id_ in sentence.tolist()
+                    ])] for sentence in target_sentences
+                ])
                 converted = self.converter(minibatch, self.device)
                 source = converted[0]
                 similars = None
                 if len(converted) == 3:
                     similars = converted[2]
                 results = self.model.translate(source, similars)
-                hypotheses.extend(
-                    # Remove <EOS>
-                    [sentence.tolist()[:-1] for sentence in results]
-                )
+                hypotheses.extend([
+                    decode_bpe([
+                        self.id2word.get(id_, '<UNK>')
+                        for id_ in sentence.tolist()[:-1]
+                    ]) for sentence in results
+                ])
         bleu = bleu_score.corpus_bleu(
             list_of_references,
             hypotheses,
@@ -411,16 +431,16 @@ def train(args: argparse.Namespace):
             shuffle=False
         )
 
+        source_word = {index: word for word, index in source_vocab.items()}
+        target_word = {index: word for word, index in target_vocab.items()}
+
         trainer.extend(extensions.Evaluator(
             v_iter1, model, converter=converter, device=cargs.gpu
         ), trigger=(cargs.extension_trigger * 5, 'iteration'))
         trainer.extend(CalculateBleu(
             v_iter2, model, converter=converter, device=cargs.gpu,
-            key='validation/main/bleu'
+            key='validation/main/bleu', id2word=target_word
         ), trigger=(cargs.extension_trigger * 5, 'iteration'))
-
-        source_word = {index: word for word, index in source_vocab.items()}
-        target_word = {index: word for word, index in target_vocab.items()}
 
         validation_size = len(validation_data)
 
@@ -434,23 +454,23 @@ def train(args: argparse.Namespace):
                 similars = converted[2]
             result = model.translate(source, similars)[0].reshape((1, -1))
 
-            source_sentence = ' '.join(
+            source_sentence = ' '.join(decode_bpe(
                 [source_word[int(word)] for word in source[0]]
-            )
-            target_sentence = ' '.join(
+            ))
+            target_sentence = ' '.join(decode_bpe(
                 [target_word[int(word)] for word in target[0]]
-            )
-            result_sentence = ' '.join(
+            ))
+            result_sentence = ' '.join(decode_bpe(
                 [target_word[int(word)] for word in result[0]]
-            )
+            ))
             logger.info('# source    : ' + source_sentence)
             logger.info('# output    : ' + result_sentence)
             logger.info('# reference : ' + target_sentence)
             if similars is not None:
                 for i, pair in enumerate(similars):
-                    retrieved_sentence = ' '.join(
+                    retrieved_sentence = ' '.join(decode_bpe(
                         [source_word[int(word)] for word in pair[0][0]]
-                    )
+                    ))
                     logger.info(f'# retrieved[{i}] : {retrieved_sentence}')
 
         trainer.extend(
