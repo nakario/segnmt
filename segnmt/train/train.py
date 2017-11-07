@@ -361,13 +361,21 @@ def train(args: argparse.Namespace):
     source_vocab = load_vocab(cargs.source_vocab, cargs.source_vocabulary_size)
     target_vocab = load_vocab(cargs.target_vocab, cargs.target_vocabulary_size)
 
-    training_data = load_train_data(
-        cargs.training_source,
-        cargs.training_target,
-        source_vocab,
-        target_vocab,
-        cargs.similar_sentence_indices
-    )
+    if cargs.similar_sentence_indices is not None:
+        training_data = load_train_data(
+            cargs.training_source,
+            cargs.training_target,
+            source_vocab,
+            target_vocab,
+            cargs.similar_sentence_indices
+        )
+    else:
+        training_data = load_data(
+            cargs.training_source,
+            cargs.training_target,
+            source_vocab,
+            target_vocab
+        )
 
     training_iter = chainer.iterators.SerialIterator(training_data,
                                                      cargs.minibatch_size)
@@ -408,15 +416,23 @@ def train(args: argparse.Namespace):
 
     if cargs.validation_source is not None and \
             cargs.validation_target is not None:
-        validation_data = load_validation_data(
-            cargs.training_source,
-            cargs.training_target,
-            cargs.validation_source,
-            cargs.validation_target,
-            source_vocab,
-            target_vocab,
-            cargs.similar_sentence_indices_validation
-        )
+        if cargs.similar_sentence_indices_validation is not None:
+            validation_data = load_validation_data(
+                cargs.training_source,
+                cargs.training_target,
+                cargs.validation_source,
+                cargs.validation_target,
+                source_vocab,
+                target_vocab,
+                cargs.similar_sentence_indices_validation
+            )
+        else:
+            validation_data = load_data(
+                cargs.validation_source,
+                cargs.validation_target,
+                source_vocab,
+                target_vocab
+            )
 
         v_iter1 = chainer.iterators.SerialIterator(
             validation_data,
