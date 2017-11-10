@@ -4,7 +4,9 @@ from typing import Optional
 from typing import Tuple
 
 import chainer
+from chainer import cuda
 from chainer import Variable
+import numpy as np
 
 from segnmt.misc.typing import ndarray
 from segnmt.models.encoder import Encoder
@@ -90,14 +92,14 @@ class EncoderDecoder(chainer.Chain):
                 assert target.shape[0] == minibatch_size
                 encoded = self.enc(source)
                 c, s, l = zip(*self.dec.generate_keys(encoded, target))
-                contexts.extend(c)
-                states.extend(s)
-                logits.extend(l)
+                contexts.extend(cuda.to_cpu(c))
+                states.extend(cuda.to_cpu(s))
+                logits.extend(cuda.to_cpu(l))
                 betas.extend(
-                    [self.xp.zeros((minibatch_size, 1), 'f')] * len(c)
+                    [np.zeros((minibatch_size, 1), 'f')] * len(c)
                 )
-        contexts = self.xp.dstack(contexts)
-        states = self.xp.dstack(states)
-        logits = self.xp.dstack(logits)
-        betas = self.xp.hstack(betas)
+        contexts = np.dstack(contexts)
+        states = np.dstack(states)
+        logits = np.dstack(logits)
+        betas = np.hstack(betas)
         return contexts, states, logits, betas

@@ -3,6 +3,7 @@ from typing import Optional
 from typing import Tuple
 
 import chainer
+from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
 from chainer import Parameter
@@ -162,6 +163,7 @@ class Decoder(chainer.Chain):
             context: Variable,
             state: Variable
     ) -> Variable:
+        device = cuda.get_device_from_array(context)
         sentence_count = state.shape[0]
         associated_contexts = context_memory[0]
         context_memory_size = associated_contexts.shape[2]
@@ -176,18 +178,14 @@ class Decoder(chainer.Chain):
             self.hidden_layer_size,
             context_memory_size
         )
-        associated_logit = context_memory[2]
-        assert associated_logit.shape == (
-            sentence_count,
-            self.vocabulary_size,
-            context_memory_size
-        )
         beta = context_memory[3]
         assert beta.shape == (sentence_count, context_memory_size)
 
-        matching_score = F.softmax(
-            self.E(context, associated_contexts, beta), axis=1
-        )
+        matching_score = F.softmax(self.E(
+            context,
+            cuda.to_gpu(associated_contexts, device),
+            cuda.to_gpu(beta)
+        ), axis=1)
         assert matching_score.shape == \
             (sentence_count, context_memory_size)
 
@@ -206,7 +204,7 @@ class Decoder(chainer.Chain):
                     self.hidden_layer_size,
                     context_memory_size
                 )
-            ) * associated_states,
+            ) * cuda.to_gpu(associated_states, device),
             axis=2
         )
         assert state.shape == averaged_state.shape
