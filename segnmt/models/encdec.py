@@ -80,7 +80,7 @@ class EncoderDecoder(chainer.Chain):
     def generate_context_memory(
             self,
             pairs: List[Tuple[ndarray, ndarray]],
-    ) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         # len(pairs) == max_retrieved_count
         contexts = []
         states = []
@@ -92,9 +92,9 @@ class EncoderDecoder(chainer.Chain):
                 assert target.shape[0] == minibatch_size
                 encoded = self.enc(source)
                 c, s, l = zip(*self.dec.generate_keys(encoded, target))
-                contexts.extend(cuda.to_cpu(c))
-                states.extend(cuda.to_cpu(s))
-                logits.extend(cuda.to_cpu(l))
+                contexts.extend(c)
+                states.extend(s)
+                logits.extend(l)
                 betas.extend(
                     [np.zeros((minibatch_size, 1), 'f')] * len(c)
                 )

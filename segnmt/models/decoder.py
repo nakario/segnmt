@@ -159,7 +159,12 @@ class Decoder(chainer.Chain):
 
     def fusion_state(
             self,
-            context_memory: Tuple[ndarray, ndarray, ndarray, ndarray],
+            context_memory: Tuple[
+                np.ndarray,
+                np.ndarray,
+                np.ndarray,
+                np.ndarray
+            ],
             context: Variable,
             state: Variable
     ) -> Variable:
@@ -217,7 +222,7 @@ class Decoder(chainer.Chain):
             self,
             encoded: Variable,
             target: ndarray
-    ) -> List[Tuple[ndarray, ndarray, ndarray]]:
+    ) -> List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
@@ -243,7 +248,11 @@ class Decoder(chainer.Chain):
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
             previous_embedding = self.embed_id(target_id)
-            keys.append((context.data, state.data, logit.data))
+            keys.append((
+                cuda.to_cpu(context.data),
+                cuda.to_cpu(state.data),
+                cuda.to_cpu(logit.data)
+            ))
 
         return keys
 
@@ -252,7 +261,7 @@ class Decoder(chainer.Chain):
             encoded: Variable,
             max_length: int = 100,
             context_memory: Optional[
-                Tuple[ndarray, ndarray, ndarray, ndarray]
+                Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
             ] = None
     ) -> List[ndarray]:
         sentence_count = encoded.shape[0]
