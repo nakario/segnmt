@@ -283,7 +283,7 @@ def load_train_data(
     with open(similar_indices) as f:
         bar = ProgressBar()
         for i, line in bar(enumerate(f), max_value=len(data)):
-            indices = [int(i) for i in line.strip().split()][1:]
+            indices = [int(i) for i in line.strip().split()][1:2]
             similar_data = [data[index] for index in indices]
             fulldata.append((*data[i], similar_data))
 
