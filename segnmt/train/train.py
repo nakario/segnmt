@@ -490,7 +490,7 @@ def train(args: argparse.Namespace):
             if similars is not None:
                 for i, pair in enumerate(similars):
                     retrieved_sentence = ' '.join(decode_bpe(
-                        [source_word[int(word)] for word in pair[0][0]]
+                        [target_word[int(word)] for word in pair[1][0]]
                     ))
                     logger.info(f'# retrieved[{i}] : {retrieved_sentence}')
 
