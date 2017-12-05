@@ -59,6 +59,8 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--extension-trigger', type=int, default=100,
                         help='The number of iterations to trigger extensions')
+    parser.add_argument('--similar-limit', type=int, default=100,
+                        help='The number of similar sentences')
 
 
 def run(args: argparse.Namespace):

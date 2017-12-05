@@ -59,6 +59,7 @@ class ConstArguments(NamedTuple):
     bleu_plot_file: str
     resume_file: Optional[str]
     extension_trigger: int
+    similar_limit: int
 
 
 def decode_bpe(sentence: List[str], separator: str = '._@@@') -> List[str]:
@@ -260,7 +261,8 @@ def load_train_data(
         target: Union[Path, str],
         source_vocab: Dict[str, int],
         target_vocab: Dict[str, int],
-        similar_indices: Union[Path, str]
+        similar_indices: Union[Path, str],
+        similar_limit: int
 ) -> List[Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]]:
     if isinstance(source, str):
         source = Path(source)
@@ -283,7 +285,7 @@ def load_train_data(
     with open(similar_indices) as f:
         bar = ProgressBar()
         for i, line in bar(enumerate(f), max_value=len(data)):
-            indices = [int(i) for i in line.strip().split()][1:2]
+            indices = [int(i) for i in line.strip().split()][1:similar_limit+1]
             similar_data = [data[index] for index in indices]
             fulldata.append((*data[i], similar_data))
 
@@ -297,7 +299,8 @@ def load_validation_data(
         target: Union[Path, str],
         source_vocab: Dict[str, int],
         target_vocab: Dict[str, int],
-        similar_indices: Union[Path, str]
+        similar_indices: Union[Path, str],
+        similar_limit: int
 ) -> List[Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]]:
     if isinstance(train_source, str):
         train_source = Path(train_source)
@@ -331,7 +334,7 @@ def load_validation_data(
     with open(similar_indices) as f:
         bar = ProgressBar()
         for i, line in bar(enumerate(f), max_value=len(data)):
-            indices = [int(i) for i in line.strip().split()][1:2]
+            indices = [int(i) for i in line.strip().split()][1:similar_limit+1]
             similar_data = [train_data[index] for index in indices]
             fulldata.append((*data[i], similar_data))
 
@@ -367,7 +370,8 @@ def train(args: argparse.Namespace):
             cargs.training_target,
             source_vocab,
             target_vocab,
-            cargs.similar_sentence_indices
+            cargs.similar_sentence_indices,
+            cargs.similar_limit
         )
     else:
         training_data = load_data(
@@ -424,7 +428,8 @@ def train(args: argparse.Namespace):
                 cargs.validation_target,
                 source_vocab,
                 target_vocab,
-                cargs.similar_sentence_indices_validation
+                cargs.similar_sentence_indices_validation,
+                cargs.similar_limit
             )
         else:
             validation_data = load_data(
