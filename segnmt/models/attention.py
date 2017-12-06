@@ -69,7 +69,7 @@ class AttentionModule(chainer.Chain):
             masked_scores = F.where(
                 mask,
                 scores,
-                -numpy.Inf * self.xp.ones(scores.shape)
+                self.xp.full(scores.shape, -numpy.Inf).astype('f')
             )
             attention = F.softmax(masked_scores)
             assert attention.shape == (minibatch_size, max_sentence_size)
