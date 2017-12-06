@@ -138,8 +138,7 @@ class CalculateBleu(chainer.training.Extension):
                 ])
         bleu = bleu_score.corpus_bleu(
             list_of_references,
-            hypotheses,
-            smoothing_function=bleu_score.SmoothingFunction().method1
+            hypotheses
         )
         chainer.report({self.key: bleu})
 
