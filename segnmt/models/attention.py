@@ -4,6 +4,7 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 from chainer import Variable
+import numpy
 
 from segnmt.misc.typing import ndarray
 
@@ -68,7 +69,7 @@ class AttentionModule(chainer.Chain):
             masked_scores = F.where(
                 mask,
                 scores,
-                -self.xp.Inf * self.xp.ones(scores.shape)
+                -numpy.Inf * self.xp.ones(scores.shape)
             )
             attention = F.softmax(masked_scores)
             assert attention.shape == (minibatch_size, max_sentence_size)
