@@ -43,27 +43,30 @@ class EncoderDecoder(chainer.Chain):
     def __call__(
             self,
             source: ndarray,
+            mask: ndarray,
             target: ndarray,
             similar_sentences: Optional[
-                List[Tuple[ndarray, ndarray]]
+                List[Tuple[ndarray, ndarray, ndarray]]
             ] = None
     ) -> Variable:
         # source.shape == (minibatch_size, source_max_sentence_size)
+        # mask.shape == (minibatch_size, source_max_sentence_size)
         # target.shape == (minibatch_size, target_max_sentence_size)
         # len(similar_sentences) == max_retrieved_count
         encoded = self.enc(source)
         context_memory = None
         if similar_sentences is not None:
             context_memory = self.generate_context_memory(similar_sentences)
-        loss = self.dec(encoded, target, context_memory)
+        loss = self.dec(encoded, mask, target, context_memory)
         chainer.report({'loss': loss}, self)
         return loss
 
     def translate(
             self,
             sentences: ndarray,
+            mask: ndarray,
             similar_sentences: Optional[
-                List[Tuple[ndarray, ndarray]]
+                List[Tuple[ndarray, ndarray, ndarray]]
             ]) -> List[ndarray]:
         # sentences.shape == (sentence_count, max_sentence_size)
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
@@ -72,12 +75,12 @@ class EncoderDecoder(chainer.Chain):
             if similar_sentences is not None:
                 context_memory = \
                     self.generate_context_memory(similar_sentences)
-            translated = self.dec.translate(encoded, 100, context_memory)
+            translated = self.dec.translate(encoded, mask, 100, context_memory)
             return translated
 
     def generate_context_memory(
             self,
-            pairs: List[Tuple[ndarray, ndarray]],
+            pairs: List[Tuple[ndarray, ndarray, ndarray]],
     ) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
         # len(pairs) == max_retrieved_count
         contexts = []
@@ -85,11 +88,11 @@ class EncoderDecoder(chainer.Chain):
         logits = []
         betas = []
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
-            for (source, target) in pairs:
+            for (source, mask, target) in pairs:
                 minibatch_size, max_sentence_size = source.shape
                 assert target.shape[0] == minibatch_size
                 encoded = self.enc(source)
-                c, s, l = zip(*self.dec.generate_keys(encoded, target))
+                c, s, l = zip(*self.dec.generate_keys(encoded, mask, target))
                 contexts.extend(c)
                 states.extend(s)
                 logits.extend(l)

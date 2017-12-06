@@ -112,6 +112,7 @@ class Decoder(chainer.Chain):
     def __call__(
             self,
             encoded: Variable,
+            mask: ndarray,
             target: ndarray,
             context_memory: Optional[
                 Tuple[ndarray, ndarray, ndarray, ndarray]
@@ -121,7 +122,7 @@ class Decoder(chainer.Chain):
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
 
-        compute_context = self.attention(encoded)
+        compute_context = self.attention(encoded, mask)
         cell = Variable(
             self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
         )
@@ -218,13 +219,14 @@ class Decoder(chainer.Chain):
     def generate_keys(
             self,
             encoded: Variable,
+            mask: ndarray,
             target: ndarray
     ) -> List[Tuple[ndarray, ndarray, ndarray]]:
         minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
 
-        compute_context = self.attention(encoded)
+        compute_context = self.attention(encoded, mask)
         cell = Variable(
             self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
         )
@@ -252,13 +254,14 @@ class Decoder(chainer.Chain):
     def translate(
             self,
             encoded: Variable,
+            mask: ndarray,
             max_length: int = 100,
             context_memory: Optional[
                 Tuple[ndarray, ndarray, ndarray, ndarray]
             ] = None
     ) -> List[ndarray]:
         sentence_count = encoded.shape[0]
-        compute_context = self.attention(encoded)
+        compute_context = self.attention(encoded, mask)
         cell = Variable(
             self.xp.zeros((sentence_count, self.hidden_layer_size), 'f')
         )

@@ -146,7 +146,7 @@ class CalculateBleu(chainer.training.Extension):
 def convert(
         minibatch: List[Tuple[np.ndarray, np.ndarray]],
         device: Optional[int]
-) -> Tuple[ndarray, ndarray]:
+) -> Tuple[ndarray, ndarray, ndarray]:
     # Append eos to the end of sentence
     eos = np.array([EOS], 'i')
     src_batch, tgt_batch = zip(*minibatch)
@@ -159,8 +159,11 @@ def convert(
         src_block = F.pad_sequence(src_sentences, padding=PAD).data
         tgt_block = F.pad_sequence(tgt_sentences, padding=PAD).data
 
+        mask = np.array(src_block != PAD)
+
     return (
         to_device(device, src_block),
+        to_device(device, mask),
         to_device(device, tgt_block)
     )
 
@@ -170,9 +173,9 @@ def convert_with_similar_sentences(
             Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]
         ],
         device: Optional[int]
-) -> Tuple[ndarray, ndarray, List[Tuple[ndarray, ndarray]]]:
+) -> Tuple[ndarray, ndarray, ndarray, List[Tuple[ndarray, ndarray, ndarray]]]:
     src_batch, tgt_batch, sim_batches = zip(*minibatch)
-    source, target = convert(list(zip(src_batch, tgt_batch)), device)
+    source, mask, target = convert(list(zip(src_batch, tgt_batch)), device)
     # len(sim_batches) == minibatch_size
     # len(sim_batches[i]) == retrieved_size
     # sim_batches[i][j][0].shape == (source_sentence_size,)
@@ -189,7 +192,7 @@ def convert_with_similar_sentences(
         )
 
     return (
-        source, target, similar_sentences
+        source, mask, target, similar_sentences
     )
 
 
@@ -220,10 +223,7 @@ def load_data(
         target: Union[Path, str],
         source_vocab: Dict[str, int],
         target_vocab: Dict[str, int]
-) -> Union[
-    List[Tuple[np.ndarray, np.ndarray]],
-    List[Tuple[np.ndarray, np.ndarray, List[Tuple[np.ndarray, np.ndarray]]]]
-]:
+) -> List[Tuple[np.ndarray, np.ndarray]]:
     if isinstance(source, str):
         source = Path(source)
     if isinstance(target, str):
@@ -242,8 +242,7 @@ def load_data(
     logger.info(f'loading {source.absolute()} and {target.absolute()}')
     with open(source) as src, open(target) as tgt:
         bar = ProgressBar()
-        i = 0
-        for i, (s, t) in bar(enumerate(zip(src, tgt)), max_value=file_len):
+        for s, t in bar(zip(src, tgt), max_value=file_len):
             s_words = s.strip().split()
             t_words = t.strip().split()
             s_array = \
@@ -468,11 +467,12 @@ def train(args: argparse.Namespace):
         def translate(_):
             data = validation_data[np.random.choice(validation_size)]
             converted = converter([data], cargs.gpu)
-            source, target = converted[:2]
+            source, mask, target = converted[:3]
             similars = None
-            if len(converted) == 3:
-                similars = converted[2]
-            result = model.translate(source, similars)[0].reshape((1, -1))
+            if len(converted) == 4:
+                similars = converted[3]
+            result = model.translate(source, mask, similars)[0]
+            result = result.reshape((1, -1))
 
             source_sentence = ' '.join(decode_bpe(
                 [source_word[int(word)] for word in source[0]]
@@ -489,7 +489,7 @@ def train(args: argparse.Namespace):
             if similars is not None:
                 for i, pair in enumerate(similars):
                     retrieved_sentence = ' '.join(decode_bpe(
-                        [target_word[int(word)] for word in pair[1][0]]
+                        [target_word[int(word)] for word in pair[2][0]]
                     ))
                     logger.info(f'# retrieved[{i}] : {retrieved_sentence}')
 

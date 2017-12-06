@@ -5,6 +5,8 @@ import chainer.functions as F
 import chainer.links as L
 from chainer import Variable
 
+from segnmt.misc.typing import ndarray
+
 
 class AttentionModule(chainer.Chain):
     def __init__(self,
@@ -24,9 +26,11 @@ class AttentionModule(chainer.Chain):
         self.attention_layer_size = attention_layer_size
 
     def __call__(self,
-                 encoded: Variable) -> Callable[[Variable], Variable]:
+                 encoded: Variable,
+                 mask: ndarray) -> Callable[[Variable], Variable]:
         minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
         assert encoder_output_size == self.encoder_output_size
+        assert mask.shape == (minibatch_size, max_sentence_size)
 
         precomputed_alignment_factor = F.reshape(
             self.linear_h(
@@ -43,10 +47,7 @@ class AttentionModule(chainer.Chain):
             assert state_alignment_factor.shape == \
                 (minibatch_size, self.attention_layer_size)
             state_alignment_factor_broadcast = F.broadcast_to(
-                F.reshape(
-                    state_alignment_factor,
-                    (minibatch_size, 1, self.attention_layer_size)
-                ),
+                F.expand_dims(state_alignment_factor, axis=1),
                 (minibatch_size, max_sentence_size, self.attention_layer_size)
             )
             scores = F.reshape(
@@ -64,7 +65,12 @@ class AttentionModule(chainer.Chain):
                 ),
                 (minibatch_size, max_sentence_size)
             )
-            attention = F.softmax(scores)
+            masked_scores = F.where(
+                mask,
+                scores,
+                -self.xp.Inf * self.xp.ones(scores.shape)
+            )
+            attention = F.softmax(masked_scores)
             assert attention.shape == (minibatch_size, max_sentence_size)
 
             context = F.reshape(
