@@ -126,10 +126,11 @@ class CalculateBleu(chainer.training.Extension):
                 ])
                 converted = self.converter(minibatch, self.device)
                 source = converted[0]
+                mask = converted[1]
                 similars = None
-                if len(converted) == 3:
-                    similars = converted[2]
-                results = self.model.translate(source, similars)
+                if len(converted) == 4:
+                    similars = converted[3]
+                results = self.model.translate(source, mask, similars)
                 hypotheses.extend([
                     decode_bpe([
                         self.id2word.get(id_, '<UNK>')
