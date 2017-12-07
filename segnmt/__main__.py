@@ -3,15 +3,13 @@ module main
 """
 
 import argparse
-from importlib import import_module
 from logging import basicConfig
 from logging import INFO
-from pkgutil import iter_modules
 from typing import List
 from typing import Optional
 
-import segnmt.commands
-
+import segnmt.commands.preproc as preproc
+import segnmt.commands.train as train
 
 basicConfig(level=INFO)
 
@@ -21,14 +19,15 @@ def main(arguments: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(prog='segnmt')
     parser.set_defaults(run=lambda _: parser.print_help())
     subparsers = parser.add_subparsers()
-    commands = segnmt.commands
-    for _, command, is_pkg in iter_modules(commands.__path__):
-        if is_pkg:
-            continue
-        command_parser = subparsers.add_parser(command)
-        command_module = import_module(f"{commands.__name__}.{command}")
-        command_module.define_parser(command_parser)
-        command_parser.set_defaults(run=command_module.run)
+
+    preproc_parser = subparsers.add_parser('preproc')
+    preproc.define_parser(preproc_parser)
+    preproc_parser.set_defaults(run=preproc.run)
+
+    train_parser = subparsers.add_parser('train')
+    train.define_parser(train_parser)
+    train_parser.set_defaults(run=train.run)
+
     args = parser.parse_args(args=arguments)
     run = args.run
     delattr(args, 'run')
