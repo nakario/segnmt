@@ -114,7 +114,7 @@ class Decoder(chainer.Chain):
             encoded: Variable,
             target: ndarray,
             context_memory: Optional[
-                Tuple[ndarray, ndarray, ndarray, ndarray]
+                Tuple[ndarray, ndarray, ndarray]
             ] = None
     ) -> Variable:
         minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
@@ -134,6 +134,13 @@ class Decoder(chainer.Chain):
         total_loss = Variable(self.xp.array(0, 'f'))
         total_predictions = 0
 
+        beta = None
+        if context_memory is not None:
+            context_memory_size = context_memory[0].shape[2]
+            beta = Variable(
+                self.xp.zeros((minibatch_size, context_memory_size), 'f')
+            )
+
         for target_id in self.xp.hsplit(target, target.shape[1]):
             target_id = target_id.reshape((minibatch_size,))
             context = compute_context(state)
@@ -142,7 +149,8 @@ class Decoder(chainer.Chain):
             cell, state = self.rnn(cell, state, concatenated)
 
             if context_memory is not None:
-                state = self.fusion_state(context_memory, context, state)
+                state, beta = \
+                    self.fusion_state(context_memory, context, state, beta)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 
@@ -158,51 +166,52 @@ class Decoder(chainer.Chain):
 
     def fusion_state(
             self,
-            context_memory: Tuple[ndarray, ndarray, ndarray, ndarray],
+            context_memory: Tuple[ndarray, ndarray, ndarray],
             context: Variable,
-            state: Variable
-    ) -> Variable:
-        sentence_count = state.shape[0]
+            state: Variable,
+            beta: Variable
+    ) -> Tuple[Variable, Variable]:
+        minibatch_size = state.shape[0]
         associated_contexts = context_memory[0]
         context_memory_size = associated_contexts.shape[2]
         assert associated_contexts.shape == (
-            sentence_count,
+            minibatch_size,
             self.encoder_output_size,
             context_memory_size
         )
         associated_states = context_memory[1]
         assert associated_states.shape == (
-            sentence_count,
+            minibatch_size,
             self.hidden_layer_size,
             context_memory_size
         )
         associated_logit = context_memory[2]
         assert associated_logit.shape == (
-            sentence_count,
+            minibatch_size,
             self.vocabulary_size,
             context_memory_size
         )
-        beta = context_memory[3]
-        assert beta.shape == (sentence_count, context_memory_size)
+
+        assert beta.shape == (minibatch_size, context_memory_size)
 
         matching_score = F.softmax(
-            self.E(context, associated_contexts, beta), axis=1
+            self.E(context, Variable(associated_contexts), beta), axis=1
         )
         assert matching_score.shape == \
-            (sentence_count, context_memory_size)
+            (minibatch_size, context_memory_size)
 
         averaged_state = F.average(
             F.broadcast_to(
                 F.reshape(
                     matching_score,
                     (
-                        sentence_count,
+                        minibatch_size,
                         1,
                         context_memory_size
                     )
                 ),
                 (
-                    sentence_count,
+                    minibatch_size,
                     self.hidden_layer_size,
                     context_memory_size
                 )
@@ -211,9 +220,14 @@ class Decoder(chainer.Chain):
         )
         assert state.shape == averaged_state.shape
         gate = self.compute_gate(context, state, averaged_state)
+        assert gate.shape == (minibatch_size,)
 
-        return F.scale(averaged_state, gate, axis=0) \
+        fusion = F.scale(averaged_state, gate, axis=0) \
             + F.scale(state, (1. - gate), axis=0)
+
+        new_beta = beta + F.scale(averaged_state, gate, axis=0)
+
+        return fusion, new_beta
 
     def generate_keys(
             self,
@@ -254,7 +268,7 @@ class Decoder(chainer.Chain):
             encoded: Variable,
             max_length: int = 100,
             context_memory: Optional[
-                Tuple[ndarray, ndarray, ndarray, ndarray]
+                Tuple[ndarray, ndarray, ndarray]
             ] = None
     ) -> List[ndarray]:
         sentence_count = encoded.shape[0]
@@ -270,6 +284,13 @@ class Decoder(chainer.Chain):
         )
         result = []
 
+        beta = None
+        if context_memory is not None:
+            context_memory_size = context_memory[0].shape[2]
+            beta = Variable(
+                self.xp.zeros((sentence_count, context_memory_size), 'f')
+            )
+
         for _ in range(max_length):
             context = compute_context(state)
             assert context.shape == \
@@ -279,7 +300,8 @@ class Decoder(chainer.Chain):
             cell, state = self.rnn(cell, state, concatenated)
 
             if context_memory is not None:
-                state = self.fusion_state(context_memory, context, state)
+                state, beta = \
+                    self.fusion_state(context_memory, context, state, beta)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
 

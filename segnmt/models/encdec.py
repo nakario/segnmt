@@ -78,12 +78,11 @@ class EncoderDecoder(chainer.Chain):
     def generate_context_memory(
             self,
             pairs: List[Tuple[ndarray, ndarray]],
-    ) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
+    ) -> Tuple[ndarray, ndarray, ndarray]:
         # len(pairs) == max_retrieved_count
         contexts = []
         states = []
         logits = []
-        betas = []
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             for (source, target) in pairs:
                 minibatch_size, max_sentence_size = source.shape
@@ -93,11 +92,7 @@ class EncoderDecoder(chainer.Chain):
                 contexts.extend(c)
                 states.extend(s)
                 logits.extend(l)
-                betas.extend(
-                    [self.xp.zeros((minibatch_size, 1), 'f')] * len(c)
-                )
         contexts = self.xp.dstack(contexts)
         states = self.xp.dstack(states)
         logits = self.xp.dstack(logits)
-        betas = self.xp.hstack(betas)
-        return contexts, states, logits, betas
+        return contexts, states, logits
