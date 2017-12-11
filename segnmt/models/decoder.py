@@ -225,7 +225,7 @@ class Decoder(chainer.Chain):
         fusion = F.scale(averaged_state, gate, axis=0) \
             + F.scale(state, (1. - gate), axis=0)
 
-        new_beta = beta + F.scale(averaged_state, gate, axis=0)
+        new_beta = beta + F.scale(matching_score, gate, axis=0)
 
         return fusion, new_beta
 
