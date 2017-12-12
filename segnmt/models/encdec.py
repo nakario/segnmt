@@ -25,7 +25,8 @@ class EncoderDecoder(chainer.Chain):
                  output_word_embeddings_size: int,
                  decoder_hidden_layer_size: int,
                  attention_hidden_layer_size: int,
-                 maxout_layer_size: int):
+                 maxout_layer_size: int,
+                 fusion_mode: str):
         super(EncoderDecoder, self).__init__()
         with self.init_scope():
             self.enc = Encoder(input_vocabulary_size,
@@ -38,7 +39,8 @@ class EncoderDecoder(chainer.Chain):
                                decoder_hidden_layer_size,
                                attention_hidden_layer_size,
                                encoder_hidden_layer_size * 2,
-                               maxout_layer_size)
+                               maxout_layer_size,
+                               mode=fusion_mode)
 
     def __call__(
             self,

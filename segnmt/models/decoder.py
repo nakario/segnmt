@@ -75,7 +75,8 @@ class Decoder(chainer.Chain):
                  encoder_output_size: int,
                  maxout_layer_size: int,
                  maxout_pool_size: int = 2,
-                 ignore_label: int = -1):
+                 ignore_label: int = -1,
+                 mode: str = 'deep'):
         super(Decoder, self).__init__()
         with self.init_scope():
             self.embed_id = L.EmbedID(vocabulary_size,
@@ -108,6 +109,8 @@ class Decoder(chainer.Chain):
         self.word_embeddings_size = word_embeddings_size
         self.hidden_layer_size = hidden_layer_size
         self.encoder_output_size = encoder_output_size
+        assert mode in ['deep', 'shallow']
+        self.mode = mode
 
     def __call__(
             self,
@@ -148,11 +151,15 @@ class Decoder(chainer.Chain):
             concatenated = F.concat((previous_embedding, context))
             cell, state = self.rnn(cell, state, concatenated)
 
-            if context_memory is not None:
+            if context_memory is not None and self.mode == 'deep':
                 state, beta = \
                     self.fusion_state(context_memory, context, state, beta)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
+            if context_memory is not None and self.mode == 'shallow':
+                logit, beta = self.fusion_logit(
+                    context_memory, context, state, logit, beta
+                )
 
             current_sentence_count = self.xp.sum(target_id != PAD)
 
@@ -213,11 +220,73 @@ class Decoder(chainer.Chain):
             axis=2
         )
         assert state.shape == averaged_state.shape
+
         gate = self.compute_gate(context, state, averaged_state)
         assert gate.shape == (minibatch_size,)
 
         fusion = F.scale(averaged_state, gate, axis=0) \
             + F.scale(state, (1. - gate), axis=0)
+
+        new_beta = beta + F.scale(matching_score, gate, axis=0)
+
+        return fusion, new_beta
+
+    def fusion_logit(
+            self,
+            context_memory: Tuple[ndarray, ndarray],
+            context: Variable,
+            state: Variable,
+            logit: Variable,
+            beta: Variable
+    ) -> Tuple[Variable, Variable]:
+        minibatch_size = state.shape[0]
+        associated_contexts = context_memory[0]
+        context_memory_size = associated_contexts.shape[2]
+        assert associated_contexts.shape == (
+            minibatch_size,
+            self.encoder_output_size,
+            context_memory_size
+        )
+        associated_states = context_memory[1]
+        assert associated_states.shape == (
+            minibatch_size,
+            self.hidden_layer_size,
+            context_memory_size
+        )
+
+        assert beta.shape == (minibatch_size, context_memory_size)
+
+        averaged_logit = self.E(context, Variable(associated_contexts), beta)
+
+        matching_score = F.softmax(averaged_logit, axis=1)
+        assert matching_score.shape == \
+               (minibatch_size, context_memory_size)
+
+        averaged_state = F.average(
+            F.broadcast_to(
+                F.reshape(
+                    matching_score,
+                    (
+                        minibatch_size,
+                        1,
+                        context_memory_size
+                    )
+                ),
+                (
+                    minibatch_size,
+                    self.hidden_layer_size,
+                    context_memory_size
+                )
+            ) * associated_states,
+            axis=2
+        )
+        assert state.shape == averaged_state.shape
+
+        gate = self.compute_gate(context, state, averaged_state)
+        assert gate.shape == (minibatch_size,)
+
+        fusion = F.scale(averaged_logit, gate, axis=0) \
+            + F.scale(logit, (1. - gate), axis=0)
 
         new_beta = beta + F.scale(matching_score, gate, axis=0)
 
@@ -291,11 +360,15 @@ class Decoder(chainer.Chain):
 
             cell, state = self.rnn(cell, state, concatenated)
 
-            if context_memory is not None:
+            if context_memory is not None and self.mode == 'deep':
                 state, beta = \
                     self.fusion_state(context_memory, context, state, beta)
             all_concatenated = F.concat((concatenated, state))
             logit = self.linear(self.maxout(all_concatenated))
+            if context_memory is not None and self.mode == 'shallow':
+                logit, beta = self.fusion_logit(
+                    context_memory, context, state, logit, beta
+                )
 
             output_id = F.reshape(F.argmax(logit, axis=1), (sentence_count,))
             result.append(output_id)

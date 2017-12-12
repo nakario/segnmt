@@ -43,6 +43,7 @@ class ConstArguments(NamedTuple):
     decoder_hidden_layer_size: int
     attention_hidden_layer_size: int
     maxout_layer_size: int
+    fusion_mode: str
 
     gpu: int
     minibatch_size: int
