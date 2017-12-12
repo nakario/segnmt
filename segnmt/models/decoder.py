@@ -114,7 +114,7 @@ class Decoder(chainer.Chain):
             encoded: Variable,
             target: ndarray,
             context_memory: Optional[
-                Tuple[ndarray, ndarray, ndarray]
+                Tuple[ndarray, ndarray]
             ] = None
     ) -> Variable:
         minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
@@ -166,7 +166,7 @@ class Decoder(chainer.Chain):
 
     def fusion_state(
             self,
-            context_memory: Tuple[ndarray, ndarray, ndarray],
+            context_memory: Tuple[ndarray, ndarray],
             context: Variable,
             state: Variable,
             beta: Variable
@@ -183,12 +183,6 @@ class Decoder(chainer.Chain):
         assert associated_states.shape == (
             minibatch_size,
             self.hidden_layer_size,
-            context_memory_size
-        )
-        associated_logit = context_memory[2]
-        assert associated_logit.shape == (
-            minibatch_size,
-            self.vocabulary_size,
             context_memory_size
         )
 
@@ -233,7 +227,7 @@ class Decoder(chainer.Chain):
             self,
             encoded: Variable,
             target: ndarray
-    ) -> List[Tuple[ndarray, ndarray, ndarray]]:
+    ) -> List[Tuple[ndarray, ndarray]]:
         minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
@@ -256,10 +250,8 @@ class Decoder(chainer.Chain):
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
             cell, state = self.rnn(cell, state, concatenated)
-            all_concatenated = F.concat((concatenated, state))
-            logit = self.linear(self.maxout(all_concatenated))
             previous_embedding = self.embed_id(target_id)
-            keys.append((context.data, state.data, logit.data))
+            keys.append((context.data, state.data))
 
         return keys
 
@@ -268,7 +260,7 @@ class Decoder(chainer.Chain):
             encoded: Variable,
             max_length: int = 100,
             context_memory: Optional[
-                Tuple[ndarray, ndarray, ndarray]
+                Tuple[ndarray, ndarray]
             ] = None
     ) -> List[ndarray]:
         sentence_count = encoded.shape[0]
