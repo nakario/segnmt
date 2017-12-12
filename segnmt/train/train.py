@@ -353,7 +353,8 @@ def train(args: argparse.Namespace):
                            cargs.target_word_embeddings_size,
                            cargs.decoder_hidden_layer_size,
                            cargs.attention_hidden_layer_size,
-                           cargs.maxout_layer_size)
+                           cargs.maxout_layer_size,
+                           cargs.fusion_mode)
     if cargs.gpu >= 0:
         chainer.cuda.get_device_from_id(cargs.gpu).use()
         model.to_gpu(cargs.gpu)
