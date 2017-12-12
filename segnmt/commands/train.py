@@ -60,7 +60,9 @@ def define_parser(parser: argparse.ArgumentParser):
     parser.add_argument('--extension-trigger', type=int, default=100,
                         help='The number of iterations to trigger extensions')
     parser.add_argument('--similar-limit', type=int, default=100,
-                        help='The number of similar sentences')
+                        help='The number of similar sentences'),
+    parser.add_argument('--fusion-mode', type=str, default='deep',
+                        help='')
 
 
 def run(args: argparse.Namespace):
