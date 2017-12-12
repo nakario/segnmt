@@ -59,11 +59,13 @@ class GateFunction(chainer.Chain):
             state: Variable,
             averaged_state: Variable
     ) -> Variable:
-        return F.sigmoid(
+        return 1.
+"""        return F.sigmoid(
             self.linear(
                 F.concat((context, state, averaged_state), axis=1)
             )
         )
+"""
 
 
 class Decoder(chainer.Chain):
