@@ -265,7 +265,7 @@ class Decoder(chainer.Chain):
             self.E(context, Variable(associated_contexts), beta), axis=1
         )
         assert matching_score.shape == \
-               (minibatch_size, context_memory_size)
+            (minibatch_size, context_memory_size)
 
         averaged_state = F.average(
             F.broadcast_to(
