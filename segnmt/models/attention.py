@@ -7,10 +7,13 @@ from chainer import Variable
 
 
 class AttentionModule(chainer.Chain):
-    def __init__(self,
-                 encoder_output_size: int,
-                 attention_layer_size: int,
-                 decoder_hidden_layer_size: int):
+    def __init__(
+            self,
+            encoder_output_size: int,
+            attention_layer_size: int,
+            decoder_hidden_layer_size: int,
+            output_embedding_size: int
+    ):
         super(AttentionModule, self).__init__()
         with self.init_scope():
             self.linear_h = L.Linear(encoder_output_size,
@@ -20,11 +23,15 @@ class AttentionModule(chainer.Chain):
                                      nobias=True)
             self.linear_o = L.Linear(attention_layer_size,
                                      1, nobias=True)
+            self.linear_p = L.Linear(output_embedding_size,
+                                     attention_layer_size)
         self.encoder_output_size = encoder_output_size
         self.attention_layer_size = attention_layer_size
 
-    def __call__(self,
-                 encoded: Variable) -> Callable[[Variable], Variable]:
+    def __call__(
+            self,
+            encoded: Variable
+    ) -> Callable[[Variable, Variable], Variable]:
         minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
         assert encoder_output_size == self.encoder_output_size
 
@@ -38,8 +45,13 @@ class AttentionModule(chainer.Chain):
             (minibatch_size, max_sentence_size, self.attention_layer_size)
         )
 
-        def compute_context(previous_state: Variable) -> Variable:
-            state_alignment_factor = self.linear_s(previous_state)
+        def compute_context(
+                previous_state: Variable,
+                previous_embedding: Variable
+        ) -> Variable:
+            state_alignment_factor = \
+                self.linear_s(previous_state) + \
+                self.linear_p(previous_embedding)
             assert state_alignment_factor.shape == \
                 (minibatch_size, self.attention_layer_size)
             state_alignment_factor_broadcast = F.broadcast_to(

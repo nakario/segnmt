@@ -93,7 +93,8 @@ class Decoder(chainer.Chain):
             self.linear = L.Linear(maxout_layer_size, vocabulary_size)
             self.attention = AttentionModule(encoder_output_size,
                                              attention_hidden_layer_size,
-                                             hidden_layer_size)
+                                             hidden_layer_size,
+                                             word_embeddings_size)
             self.bos_state = Parameter(
                 initializer=self.xp.random.randn(
                     1,
@@ -143,7 +144,7 @@ class Decoder(chainer.Chain):
 
         for target_id in self.xp.hsplit(target, target.shape[1]):
             target_id = target_id.reshape((minibatch_size,))
-            context = compute_context(state)
+            context = compute_context(state, previous_embedding)
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
             cell, state = self.rnn(cell, state, concatenated)
@@ -246,7 +247,7 @@ class Decoder(chainer.Chain):
 
         for target_id in self.xp.hsplit(target, target.shape[1]):
             target_id = target_id.reshape((minibatch_size,))
-            context = compute_context(state)
+            context = compute_context(state, previous_embedding)
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
             cell, state = self.rnn(cell, state, concatenated)
@@ -284,7 +285,7 @@ class Decoder(chainer.Chain):
             )
 
         for _ in range(max_length):
-            context = compute_context(state)
+            context = compute_context(state, previous_embedding)
             assert context.shape == \
                 (sentence_count, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
