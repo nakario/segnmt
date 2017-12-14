@@ -207,7 +207,6 @@ def load_vocab(vocab_file: Union[Path, str], size: int) -> Dict[str, int]:
     words = ['<UNK>', '<EOS>']
     with open(vocab_file) as f:
         words += [line.strip() for line in f]
-    assert size <= len(words)
 
     vocab = {word: index for index, word in enumerate(words) if index < size}
     assert vocab['<UNK>'] == UNK

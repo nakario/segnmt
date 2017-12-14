@@ -94,7 +94,7 @@ class EncoderDecoder(chainer.Chain):
                 contexts.extend(c)
                 states.extend(s)
                 indices.extend(i)
-        contexts = self.xp.dstack(contexts)
-        states = self.xp.dstack(states)
-        indices = self.xp.hstack(indices)
+        contexts = self.xp.dstack(contexts).swapaxes(1,2)
+        states = self.xp.dstack(states).swapaxes(1,2)
+        indices = self.xp.vstack(indices).swapaxes(0,1)
         return contexts, states, indices

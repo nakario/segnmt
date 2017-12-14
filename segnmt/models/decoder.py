@@ -28,23 +28,22 @@ class SimilarityScoreFunction(chainer.Chain):
             self,
             context: Variable,
             associated_contexts: Variable,
-            beta: Variable) -> Variable:
+            beta: Variable
+    ) -> Variable:
         minibatch_size, encoder_output_size = context.shape
-        _, _, context_memory_size = associated_contexts.shape
-        assert context.shape == associated_contexts.shape[:2]
-        assert associated_contexts.shape[::2] == beta.shape
+        _, context_memory_size, _ = associated_contexts.shape
+        assert associated_contexts.shape == (
+            minibatch_size, context_memory_size, encoder_output_size
+        )
+        assert beta.shape == (minibatch_size, context_memory_size)
         if self.M.data is None:
             self.M.initialize((encoder_output_size, encoder_output_size))
-        return F.reshape(
-            F.batch_matmul(
-                F.reshape(
-                    F.linear(context, self.M),
-                    (minibatch_size, 1, encoder_output_size)
-                ),
-                associated_contexts
-            ),
-            (minibatch_size, context_memory_size)
-        ) - F.scale(beta, self.l)
+
+        return F.squeeze(F.matmul(
+            F.expand_dims(context, axis=1),
+            F.linear(associated_contexts, self.M),
+            transb=True
+        )) - F.scale(beta, self.l)
 
 
 class GateFunction(chainer.Chain):
@@ -59,11 +58,9 @@ class GateFunction(chainer.Chain):
             state: Variable,
             averaged_state: Variable
     ) -> Variable:
-        return F.sigmoid(
-            self.linear(
+        return F.sigmoid(F.squeeze(self.linear(
                 F.concat((context, state, averaged_state), axis=1)
-            )
-        )
+        )))
 
 
 class Decoder(chainer.Chain):
@@ -140,7 +137,7 @@ class Decoder(chainer.Chain):
 
         beta = None
         if context_memory is not None:
-            context_memory_size = context_memory[0].shape[2]
+            context_memory_size = context_memory[0].shape[1]
             beta = Variable(
                 self.xp.zeros((minibatch_size, context_memory_size), 'f')
             )
@@ -181,17 +178,17 @@ class Decoder(chainer.Chain):
     ) -> Tuple[Variable, Variable]:
         minibatch_size = state.shape[0]
         associated_contexts = context_memory[0]
-        context_memory_size = associated_contexts.shape[2]
+        context_memory_size = associated_contexts.shape[1]
         assert associated_contexts.shape == (
             minibatch_size,
-            self.encoder_output_size,
-            context_memory_size
+            context_memory_size,
+            self.encoder_output_size
         )
         associated_states = context_memory[1]
         assert associated_states.shape == (
             minibatch_size,
-            self.hidden_layer_size,
-            context_memory_size
+            context_memory_size,
+            self.hidden_layer_size
         )
 
         assert beta.shape == (minibatch_size, context_memory_size)
@@ -203,24 +200,14 @@ class Decoder(chainer.Chain):
             (minibatch_size, context_memory_size)
 
         averaged_state = F.sum(
-            F.broadcast_to(
-                F.reshape(
-                    matching_score,
-                    (
-                        minibatch_size,
-                        1,
-                        context_memory_size
-                    )
-                ),
-                (
-                    minibatch_size,
-                    self.hidden_layer_size,
-                    context_memory_size
-                )
-            ) * associated_states,
-            axis=2
+            F.scale(
+                associated_states,
+                F.expand_dims(matching_score, axis=1),
+                axis=0
+            ),
+            axis=1
         )
-        assert state.shape == averaged_state.shape
+        assert averaged_state.shape == state.shape
 
         gate = self.compute_gate(context, state, averaged_state)
         assert gate.shape == (minibatch_size,)
@@ -242,17 +229,17 @@ class Decoder(chainer.Chain):
     ) -> Tuple[Variable, Variable]:
         minibatch_size = state.shape[0]
         associated_contexts = context_memory[0]
-        context_memory_size = associated_contexts.shape[2]
+        context_memory_size = associated_contexts.shape[1]
         assert associated_contexts.shape == (
             minibatch_size,
-            self.encoder_output_size,
-            context_memory_size
+            context_memory_size,
+            self.encoder_output_size
         )
         associated_states = context_memory[1]
         assert associated_states.shape == (
             minibatch_size,
-            self.hidden_layer_size,
-            context_memory_size
+            context_memory_size,
+            self.hidden_layer_size
         )
         associated_indices = context_memory[2]
         assert associated_indices.shape == (
@@ -269,24 +256,14 @@ class Decoder(chainer.Chain):
                (minibatch_size, context_memory_size)
 
         averaged_state = F.sum(
-            F.broadcast_to(
-                F.reshape(
-                    matching_score,
-                    (
-                        minibatch_size,
-                        1,
-                        context_memory_size
-                    )
-                ),
-                (
-                    minibatch_size,
-                    self.hidden_layer_size,
-                    context_memory_size
-                )
-            ) * associated_states,
-            axis=2
+            F.scale(
+                associated_states,
+                F.expand_dims(matching_score, axis=1),
+                axis=0
+            ),
+            axis=1
         )
-        assert state.shape == averaged_state.shape
+        assert averaged_state.shape == state.shape
 
         gate = self.compute_gate(context, state, averaged_state)
         assert gate.shape == (minibatch_size,)
@@ -295,11 +272,11 @@ class Decoder(chainer.Chain):
                 associated_indices +
                 self.xp.arange(
                     minibatch_size
-                )[:,1] * self.vocabulary_size
+                ).reshape((-1, 1)) * self.vocabulary_size
         ).flatten()
-        indices_mask = (associated_indices != PAD).flatten()
         assert flatten_indices.shape == (minibatch_size * context_memory_size,)
-        assert flatten_indices.shape == indices_mask.shape
+        indices_mask = (associated_indices != PAD).flatten()
+        assert indices_mask.shape == flatten_indices.shape
 
         masked_score = F.where(
             indices_mask,
@@ -375,7 +352,7 @@ class Decoder(chainer.Chain):
 
         beta = None
         if context_memory is not None:
-            context_memory_size = context_memory[0].shape[2]
+            context_memory_size = context_memory[0].shape[1]
             beta = Variable(
                 self.xp.zeros((sentence_count, context_memory_size), 'f')
             )
