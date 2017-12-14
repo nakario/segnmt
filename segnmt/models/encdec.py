@@ -25,7 +25,8 @@ class EncoderDecoder(chainer.Chain):
                  output_word_embeddings_size: int,
                  decoder_hidden_layer_size: int,
                  attention_hidden_layer_size: int,
-                 maxout_layer_size: int):
+                 maxout_layer_size: int,
+                 fusion_mode: str):
         super(EncoderDecoder, self).__init__()
         with self.init_scope():
             self.enc = Encoder(input_vocabulary_size,
@@ -38,7 +39,8 @@ class EncoderDecoder(chainer.Chain):
                                decoder_hidden_layer_size,
                                attention_hidden_layer_size,
                                encoder_hidden_layer_size * 2,
-                               maxout_layer_size)
+                               maxout_layer_size,
+                               mode=fusion_mode)
 
     def __call__(
             self,
@@ -78,18 +80,21 @@ class EncoderDecoder(chainer.Chain):
     def generate_context_memory(
             self,
             pairs: List[Tuple[ndarray, ndarray]],
-    ) -> Tuple[ndarray, ndarray]:
+    ) -> Tuple[ndarray, ndarray, ndarray]:
         # len(pairs) == max_retrieved_count
         contexts = []
         states = []
+        indices = []
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             for (source, target) in pairs:
                 minibatch_size, max_sentence_size = source.shape
                 assert target.shape[0] == minibatch_size
                 encoded = self.enc(source)
-                c, s = zip(*self.dec.generate_keys(encoded, target))
+                c, s, i = zip(*self.dec.generate_keys(encoded, target))
                 contexts.extend(c)
                 states.extend(s)
-        contexts = self.xp.dstack(contexts)
-        states = self.xp.dstack(states)
-        return contexts, states
+                indices.extend(i)
+        contexts = self.xp.dstack(contexts).swapaxes(1,2)
+        states = self.xp.dstack(states).swapaxes(1,2)
+        indices = self.xp.vstack(indices).swapaxes(0,1)
+        return contexts, states, indices

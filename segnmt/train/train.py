@@ -43,6 +43,7 @@ class ConstArguments(NamedTuple):
     decoder_hidden_layer_size: int
     attention_hidden_layer_size: int
     maxout_layer_size: int
+    fusion_mode: str
 
     gpu: int
     minibatch_size: int
@@ -206,7 +207,6 @@ def load_vocab(vocab_file: Union[Path, str], size: int) -> Dict[str, int]:
     words = ['<UNK>', '<EOS>']
     with open(vocab_file) as f:
         words += [line.strip() for line in f]
-    assert size <= len(words)
 
     vocab = {word: index for index, word in enumerate(words) if index < size}
     assert vocab['<UNK>'] == UNK
@@ -352,7 +352,8 @@ def train(args: argparse.Namespace):
                            cargs.target_word_embeddings_size,
                            cargs.decoder_hidden_layer_size,
                            cargs.attention_hidden_layer_size,
-                           cargs.maxout_layer_size)
+                           cargs.maxout_layer_size,
+                           cargs.fusion_mode)
     if cargs.gpu >= 0:
         chainer.cuda.get_device_from_id(cargs.gpu).use()
         model.to_gpu(cargs.gpu)
