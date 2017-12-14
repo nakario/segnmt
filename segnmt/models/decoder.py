@@ -155,11 +155,12 @@ class Decoder(chainer.Chain):
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
             cell, state = self.rnn(cell, state, concatenated)
-
-            if context_memory is not None and self.mode == 'deep':
-                state, beta = \
-                    self.fusion_state(context_memory, context, state, beta)
             all_concatenated = F.concat((concatenated, state))
+            if context_memory is not None and self.mode == 'deep':
+                fusion, beta = \
+                    self.fusion_state(context_memory, context, state, beta)
+                all_concatenated = F.concat((concatenated, fusion))
+
             logit = self.linear(self.maxout(all_concatenated))
             if context_memory is not None and self.mode == 'shallow':
                 logit, beta = self.fusion_logit(
