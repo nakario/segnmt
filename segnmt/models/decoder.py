@@ -40,9 +40,8 @@ class SimilarityScoreFunction(chainer.Chain):
             self.M.initialize((encoder_output_size, encoder_output_size))
 
         return F.squeeze(F.matmul(
-            F.expand_dims(context, axis=1),
-            F.linear(associated_contexts, self.M),
-            transb=True
+            associated_contexts,
+            F.expand_dims(F.linear(context, self.M), axis=2)
         )) - F.scale(beta, self.l)
 
 
