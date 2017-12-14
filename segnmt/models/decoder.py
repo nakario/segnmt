@@ -209,7 +209,7 @@ class Decoder(chainer.Chain):
         averaged_state = F.sum(
             F.scale(
                 associated_states,
-                F.expand_dims(matching_score, axis=1),
+                matching_score,
                 axis=0
             ),
             axis=1
