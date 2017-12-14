@@ -39,10 +39,13 @@ class SimilarityScoreFunction(chainer.Chain):
         if self.M.data is None:
             self.M.initialize((encoder_output_size, encoder_output_size))
 
-        return F.squeeze(F.matmul(
-            associated_contexts,
-            F.expand_dims(F.linear(context, self.M), axis=2)
-        )) - F.scale(beta, self.l)
+        return F.squeeze(
+            F.matmul(
+                associated_contexts,
+                F.expand_dims(F.linear(context, self.M), axis=2)
+            ),
+            axis=2
+        ) - F.scale(beta, self.l)
 
 
 class GateFunction(chainer.Chain):
@@ -57,9 +60,14 @@ class GateFunction(chainer.Chain):
             state: Variable,
             averaged_state: Variable
     ) -> Variable:
-        return F.sigmoid(F.squeeze(self.linear(
-                F.concat((context, state, averaged_state), axis=1)
-        )))
+        return F.sigmoid(
+            F.squeeze(
+                self.linear(
+                    F.concat((context, state, averaged_state), axis=1)
+                ),
+                axis=1
+            )
+        )
 
 
 class Decoder(chainer.Chain):
