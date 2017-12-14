@@ -285,7 +285,9 @@ class Decoder(chainer.Chain):
 
         fusion = F.log(F.reshape(
             F.scatter_add(
-                F.scale(F.softmax(logit, axis=1), (1. - gate), axis=0),
+                F.flatten(
+                    F.scale(F.softmax(logit, axis=1), (1. - gate), axis=0)
+                ),
                 flatten_indices,
                 masked_score
             ),
