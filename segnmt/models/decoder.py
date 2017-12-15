@@ -49,10 +49,15 @@ class SimilarityScoreFunction(chainer.Chain):
 
 
 class GateFunction(chainer.Chain):
-    def __init__(self, in_size: int):
+    def __init__(
+            self,
+            in_size: int,
+            gate_hidden_layer_size: int
+    ):
         super(GateFunction, self).__init__()
         with self.init_scope():
-            self.linear = L.Linear(in_size, 1)
+            self.linear_in = L.Linear(in_size, gate_hidden_layer_size)
+            self.linear_out = L.Linear(gate_hidden_layer_size, 1)
 
     def __call__(
             self,
@@ -60,14 +65,14 @@ class GateFunction(chainer.Chain):
             state: Variable,
             averaged_state: Variable
     ) -> Variable:
-        return F.sigmoid(
-            F.squeeze(
-                self.linear(
-                    F.concat((context, state, averaged_state), axis=1)
-                ),
-                axis=1
-            )
-        )
+        assert context.ndim == state.ndim == averaged_state.ndim == 2
+        assert context.shape[0] == state.shape[0] == averaged_state.shape[0]
+        return F.sigmoid(F.squeeze(
+            self.linear_out(F.tanh(self.linear_in(
+                F.concat((context, state, averaged_state), axis=1)
+            ))),
+            axis=1
+        ))
 
 
 class Decoder(chainer.Chain):
@@ -76,6 +81,7 @@ class Decoder(chainer.Chain):
                  word_embeddings_size: int,
                  hidden_layer_size: int,
                  attention_hidden_layer_size: int,
+                 gate_hidden_layer_size: int,
                  encoder_output_size: int,
                  maxout_layer_size: int,
                  maxout_pool_size: int = 2,
@@ -108,7 +114,8 @@ class Decoder(chainer.Chain):
             )
             self.E = SimilarityScoreFunction(encoder_output_size)
             self.compute_gate = GateFunction(
-                encoder_output_size + hidden_layer_size + hidden_layer_size
+                encoder_output_size + hidden_layer_size + hidden_layer_size,
+                gate_hidden_layer_size
             )
         self.vocabulary_size = vocabulary_size
         self.word_embeddings_size = word_embeddings_size

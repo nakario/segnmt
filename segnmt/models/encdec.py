@@ -25,6 +25,7 @@ class EncoderDecoder(chainer.Chain):
                  output_word_embeddings_size: int,
                  decoder_hidden_layer_size: int,
                  attention_hidden_layer_size: int,
+                 gate_hidden_layer_size: int,
                  maxout_layer_size: int,
                  fusion_mode: str):
         super(EncoderDecoder, self).__init__()
@@ -38,6 +39,7 @@ class EncoderDecoder(chainer.Chain):
                                output_word_embeddings_size,
                                decoder_hidden_layer_size,
                                attention_hidden_layer_size,
+                               gate_hidden_layer_size,
                                encoder_hidden_layer_size * 2,
                                maxout_layer_size,
                                mode=fusion_mode)

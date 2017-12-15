@@ -26,6 +26,8 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--attention-hidden-layer-size', type=int,
                         default=1024, help='')
+    parser.add_argument('--gate-hidden-layer-size', type=int,
+                        default=512, help='')
     parser.add_argument('--maxout-layer-size', type=int, default=512,
                         help='')
 
