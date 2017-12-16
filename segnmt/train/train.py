@@ -42,6 +42,7 @@ class ConstArguments(NamedTuple):
     target_word_embeddings_size: int
     decoder_hidden_layer_size: int
     attention_hidden_layer_size: int
+    gate_hidden_layer_size: int
     maxout_layer_size: int
     fusion_mode: str
 
@@ -352,6 +353,7 @@ def train(args: argparse.Namespace):
                            cargs.target_word_embeddings_size,
                            cargs.decoder_hidden_layer_size,
                            cargs.attention_hidden_layer_size,
+                           cargs.gate_hidden_layer_size,
                            cargs.maxout_layer_size,
                            cargs.fusion_mode)
     if cargs.gpu >= 0:
