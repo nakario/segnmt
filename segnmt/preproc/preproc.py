@@ -233,7 +233,8 @@ def preproc(args: Namespace):
         make_sim(
             source,
             output / Path('train_sim'),
-            True
+            True,
+            cargs.limit
         )
 
     bpe_source = output / Path('bpe_source')
@@ -264,7 +265,8 @@ def preproc(args: Namespace):
         make_sim(
             source_dev,
             output / Path('dev_sim'),
-            False
+            False,
+            cargs.limit
         )
 
     source_dev_compressed = output / Path('source_dev_compressed')
