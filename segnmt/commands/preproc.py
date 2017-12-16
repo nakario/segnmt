@@ -27,7 +27,7 @@ def define_parser(parser):
                         help='')
     parser.add_argument('--skip-make-voc', action='store_true',
                         help='')
-    parser.add_argument('--limit', default=None,
+    parser.add_argument('--limit', type=int, default=-1,
                         help='')
 
 

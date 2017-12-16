@@ -18,7 +18,7 @@ class Retriever:
     def __init__(self,
                  engine: BaseEngine,
                  similarity: Callable[[str, str], float],
-                 limit: Optional[int] = None,
+                 limit: int = -1,
                  training: bool = False):
         self.engine = engine
         self.similarity = similarity
@@ -33,7 +33,7 @@ class Retriever:
         reranked_pairs = self.rerank(pairs, src)
 
         # Return the top-K similar pairs
-        if self.limit is not None and self.limit > 0:
+        if self.limit >= 0:
             return list(reranked_pairs)[:self.limit]
 
         # Return greedy selected pairs based on the coverage of symbols

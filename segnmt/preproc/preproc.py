@@ -4,7 +4,6 @@ from logging import getLogger
 from pathlib import Path
 from typing import List
 from typing import NamedTuple
-from typing import Optional
 from typing import Union
 
 from joblib import delayed
@@ -31,7 +30,7 @@ class ConstArguments(NamedTuple):
     skip_create_bpe: bool
     skip_bpe_encode: bool
     skip_make_voc: bool
-    limit: Optional[int]
+    limit: int
 
 
 logger = getLogger(__name__)
@@ -162,7 +161,7 @@ def retrieve_indices(
         sentence: str,
         i: int,
         training: bool,
-        limit: Optional[int] = None
+        limit: int = -1
 ) -> List[str]:
     engine = ElasticEngine(100, 'segnmt', 'pairs')
     retriever = Retriever(
@@ -183,7 +182,7 @@ def make_sim(
         data: Union[Path, str],
         sim_file: Union[Path, str],
         training: bool,
-        limit: Optional[int] = None
+        limit: int = -1
 ):
     """Create a list of indices of similar sentences."""
     if isinstance(data, str):
