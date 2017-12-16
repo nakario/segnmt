@@ -62,6 +62,7 @@ class ConstArguments(NamedTuple):
     resume_file: Optional[str]
     extension_trigger: int
     similar_limit: int
+    similar_limit_validation: int
 
 
 def decode_bpe(sentence: List[str], separator: str = '._@@@') -> List[str]:
@@ -431,7 +432,7 @@ def train(args: argparse.Namespace):
                 source_vocab,
                 target_vocab,
                 cargs.similar_sentence_indices_validation,
-                cargs.similar_limit
+                cargs.similar_limit_validation
             )
         else:
             validation_data = load_data(

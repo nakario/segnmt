@@ -4,6 +4,7 @@ from logging import getLogger
 from pathlib import Path
 from typing import List
 from typing import NamedTuple
+from typing import Optional
 from typing import Union
 
 from joblib import delayed
@@ -30,6 +31,7 @@ class ConstArguments(NamedTuple):
     skip_create_bpe: bool
     skip_bpe_encode: bool
     skip_make_voc: bool
+    limit: Optional[int]
 
 
 logger = getLogger(__name__)
@@ -156,11 +158,17 @@ def make_voc(
     logger.info(f'Size of vocabulary : {len(vocab)}')
 
 
-def retrieve_indices(sentence: str, i: int, training: bool) -> List[str]:
+def retrieve_indices(
+        sentence: str,
+        i: int,
+        training: bool,
+        limit: Optional[int] = None
+) -> List[str]:
     engine = ElasticEngine(100, 'segnmt', 'pairs')
     retriever = Retriever(
         engine,
         fuzzy_word_level_similarity,
+        limit=limit,
         training=training
     )
     retrieved = retriever.retrieve(sentence, i)
@@ -174,7 +182,8 @@ def retrieve_indices(sentence: str, i: int, training: bool) -> List[str]:
 def make_sim(
         data: Union[Path, str],
         sim_file: Union[Path, str],
-        training: bool
+        training: bool,
+        limit: Optional[int] = None
 ):
     """Create a list of indices of similar sentences."""
     if isinstance(data, str):
@@ -188,7 +197,7 @@ def make_sim(
     with open(data) as src:
         sentence_list = src.readlines()
         indices_list = Parallel(n_jobs=-1, verbose=1)([
-            delayed(retrieve_indices)(sentence.strip(), i, training)
+            delayed(retrieve_indices)(sentence.strip(), i, training, limit)
             for i, sentence in enumerate(sentence_list)
         ])
 
