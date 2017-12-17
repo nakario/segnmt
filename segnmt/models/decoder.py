@@ -136,7 +136,7 @@ class Decoder(chainer.Chain):
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
 
-        compute_context = self.attention(encoded)
+        self.attention.precompute(encoded)
         state = F.broadcast_to(
             self.bos_state, (minibatch_size, self.hidden_layer_size)
         )
@@ -155,7 +155,7 @@ class Decoder(chainer.Chain):
 
         for target_id in self.xp.hsplit(target, target.shape[1]):
             target_id = target_id.reshape((minibatch_size,))
-            context = compute_context(state, previous_embedding)
+            context = self.attention(state, previous_embedding)
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
             state = self.rnn(state, concatenated)
@@ -319,7 +319,7 @@ class Decoder(chainer.Chain):
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
 
-        compute_context = self.attention(encoded)
+        self.attention.precompute(encoded)
         state = F.broadcast_to(
             self.bos_state, (minibatch_size, self.hidden_layer_size)
         )
@@ -330,7 +330,7 @@ class Decoder(chainer.Chain):
 
         for target_id in self.xp.hsplit(target, target.shape[1]):
             target_id = target_id.reshape((minibatch_size,))
-            context = compute_context(state, previous_embedding)
+            context = self.attention(state, previous_embedding)
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
             state = self.rnn(state, concatenated)
@@ -348,7 +348,7 @@ class Decoder(chainer.Chain):
             ] = None
     ) -> List[ndarray]:
         sentence_count = encoded.shape[0]
-        compute_context = self.attention(encoded)
+        self.attention.precompute(encoded)
         state = F.broadcast_to(
             self.bos_state, (sentence_count, self.hidden_layer_size)
         )
@@ -365,7 +365,7 @@ class Decoder(chainer.Chain):
             )
 
         for _ in range(max_length):
-            context = compute_context(state, previous_embedding)
+            context = self.attention(state, previous_embedding)
             assert context.shape == \
                 (sentence_count, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
