@@ -84,6 +84,6 @@ class AttentionModule(chainer.Chain):
         ))
         assert attention.shape == (minibatch_size, max_sentence_size)
 
-        context = F.sum(F.scale(attention, self.encoded, axis=0), axis=1)
+        context = F.sum(F.scale(self.encoded, attention, axis=0), axis=1)
         return context
 
