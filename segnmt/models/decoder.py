@@ -92,7 +92,7 @@ class Decoder(chainer.Chain):
             self.embed_id = L.EmbedID(vocabulary_size,
                                       word_embeddings_size,
                                       ignore_label=ignore_label)
-            self.rnn = L.StatelessGRU(
+            self.rnn = L.StatelessLSTM(
                 word_embeddings_size + encoder_output_size,
                 hidden_layer_size
             )
@@ -137,6 +137,9 @@ class Decoder(chainer.Chain):
         assert target.shape[0] == minibatch_size
 
         self.attention.precompute(encoded)
+        cell = Variable(
+            self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
+        )
         state = F.broadcast_to(
             self.bos_state, (minibatch_size, self.hidden_layer_size)
         )
@@ -158,7 +161,7 @@ class Decoder(chainer.Chain):
             context = self.attention(state, previous_embedding)
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
-            state = self.rnn(state, concatenated)
+            cell, state = self.rnn(cell, state, concatenated)
 
             if context_memory is not None and self.mode == 'deep':
                 state, beta = \
@@ -320,6 +323,9 @@ class Decoder(chainer.Chain):
         assert target.shape[0] == minibatch_size
 
         self.attention.precompute(encoded)
+        cell = Variable(
+            self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
+        )
         state = F.broadcast_to(
             self.bos_state, (minibatch_size, self.hidden_layer_size)
         )
@@ -333,7 +339,7 @@ class Decoder(chainer.Chain):
             context = self.attention(state, previous_embedding)
             assert context.shape == (minibatch_size, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
-            state = self.rnn(state, concatenated)
+            cell, state = self.rnn(cell, state, concatenated)
             previous_embedding = self.embed_id(target_id)
             keys.append((context.data, state.data, target_id))
 
@@ -349,6 +355,9 @@ class Decoder(chainer.Chain):
     ) -> List[ndarray]:
         sentence_count = encoded.shape[0]
         self.attention.precompute(encoded)
+        cell = Variable(
+            self.xp.zeros((sentence_count, self.hidden_layer_size), 'f')
+        )
         state = F.broadcast_to(
             self.bos_state, (sentence_count, self.hidden_layer_size)
         )
@@ -370,7 +379,7 @@ class Decoder(chainer.Chain):
                 (sentence_count, self.encoder_output_size)
             concatenated = F.concat((previous_embedding, context))
 
-            state = self.rnn(state, concatenated)
+            cell, state = self.rnn(cell, state, concatenated)
 
             if context_memory is not None and self.mode == 'deep':
                 state, beta = \
