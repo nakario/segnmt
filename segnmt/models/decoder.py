@@ -36,8 +36,11 @@ class SimilarityScoreFunction(chainer.Chain):
             minibatch_size, context_memory_size, encoder_output_size
         )
         assert beta.shape == (minibatch_size, context_memory_size)
-        if self.M.data is None:
+
+        if self.M.array is None:
             self.M.initialize((encoder_output_size, encoder_output_size))
+        if self.l.array is None:
+            self.l.initialize((1,))
 
         return F.squeeze(
             F.matmul(
@@ -135,6 +138,9 @@ class Decoder(chainer.Chain):
         minibatch_size, max_sentence_size, encoder_output_size = encoded.shape
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
+
+        if self.bos_state.array is None:
+            self.bos_state.initialize((1, self.hidden_layer_size))
 
         self.attention.precompute(encoded)
         cell = Variable(
@@ -322,6 +328,9 @@ class Decoder(chainer.Chain):
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
 
+        if self.bos_state.array is None:
+            self.bos_state.initialize((1, self.hidden_layer_size))
+
         self.attention.precompute(encoded)
         cell = Variable(
             self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
@@ -354,6 +363,10 @@ class Decoder(chainer.Chain):
             ] = None
     ) -> List[ndarray]:
         sentence_count = encoded.shape[0]
+
+        if self.bos_state.array is None:
+            self.bos_state.initialize((1, self.hidden_layer_size))
+
         self.attention.precompute(encoded)
         cell = Variable(
             self.xp.zeros((sentence_count, self.hidden_layer_size), 'f')
