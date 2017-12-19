@@ -48,7 +48,7 @@ class SimilarityScoreFunction(chainer.Chain):
                 F.expand_dims(F.linear(context, self.M), axis=2)
             ),
             axis=2
-        ) - F.scale(beta, self.l)
+        ) - F.scale(beta, F.broadcast_to(self.l, beta.shape[:1]), axis=0)
 
 
 class GateFunction(chainer.Chain):
