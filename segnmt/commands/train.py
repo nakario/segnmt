@@ -26,6 +26,8 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--attention-hidden-layer-size', type=int,
                         default=1024, help='')
+    parser.add_argument('--gate-hidden-layer-size', type=int,
+                        default=512, help='')
     parser.add_argument('--maxout-layer-size', type=int, default=512,
                         help='')
 
@@ -47,22 +49,24 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--validation-target', default=None,
                         help='')
+    parser.add_argument('--similar-sentence-indices', default=None,
+                        help='')
+    parser.add_argument('--similar-sentence-indices-validation', default=None,
+                        help='')
     parser.add_argument('--loss-plot-file', type=str, default='loss.png',
                         help='')
     parser.add_argument('--bleu-plot-file', type=str, default='bleu.png',
                         help='')
     parser.add_argument('--resume-file', default=None,
                         help='')
-    parser.add_argument('--min-source-len', type=int, default=1,
-                        help='')
-    parser.add_argument('--max-source-len', type=int, default=50,
-                        help='')
-    parser.add_argument('--min-target-len', type=int, default=1,
-                        help='')
-    parser.add_argument('--max-target-len', type=int, default=50,
-                        help='')
     parser.add_argument('--extension-trigger', type=int, default=100,
                         help='The number of iterations to trigger extensions')
+    parser.add_argument('--similar-limit', type=int, default=2,
+                        help='The number of similar sentences'),
+    parser.add_argument('--similar-limit-validation', type=int, default=4,
+                        help='The number of similar sentences'),
+    parser.add_argument('--fusion-mode', type=str, default='deep',
+                        help='')
 
 
 def run(args: argparse.Namespace):

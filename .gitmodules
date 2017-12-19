@@ -1,0 +1,3 @@
+[submodule "submodules/knmt"]
+	path = submodules/knmt
+	url = https://github.com/fabiencro/knmt
