@@ -68,10 +68,13 @@ class AttentionModule(chainer.Chain):
             self.linear_o(
                 F.reshape(
                     F.tanh(
-                        F.bias(
-                            self.precomputed_alignment_factor,
+                        self.precomputed_alignment_factor + F.broadcast_to(
                             F.expand_dims(state_alignment_factor, axis=1),
-                            axis=0
+                            (
+                                minibatch_size,
+                                max_sentence_size,
+                                self.attention_layer_size
+                            )
                         )
                     ),
                     (
