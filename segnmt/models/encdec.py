@@ -68,7 +68,9 @@ class EncoderDecoder(chainer.Chain):
             sentences: ndarray,
             similar_sentences: Optional[
                 List[Tuple[ndarray, ndarray]]
-            ]) -> List[ndarray]:
+            ],
+            max_translation_length: int = 100
+    ) -> List[ndarray]:
         # sentences.shape == (sentence_count, max_sentence_size)
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             encoded = self.enc(sentences)
@@ -76,7 +78,11 @@ class EncoderDecoder(chainer.Chain):
             if similar_sentences is not None:
                 context_memory = \
                     self.generate_context_memory(similar_sentences)
-            translated = self.dec.translate(encoded, 100, context_memory)
+            translated = self.dec.translate(
+                encoded,
+                max_translation_length,
+                context_memory
+            )
             return translated
 
     def generate_context_memory(

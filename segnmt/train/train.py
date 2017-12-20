@@ -63,6 +63,7 @@ class ConstArguments(NamedTuple):
     extension_trigger: int
     similar_limit: int
     similar_limit_validation: int
+    max_translation_length: int
 
 
 def decode_bpe(sentence: List[str], separator: str = '._@@@') -> List[str]:
@@ -105,7 +106,8 @@ class CalculateBleu(chainer.training.Extension):
             ],
             id2word: Dict[int, str],
             key: str,
-            device: int
+            device: int,
+            max_translation_length: int = 100
     ):
         self.iter = validation_iter
         self.model = model
@@ -113,6 +115,7 @@ class CalculateBleu(chainer.training.Extension):
         self.id2word = id2word
         self.device = device
         self.key = key
+        self.max_translation_length = max_translation_length
 
     def __call__(self, trainer):
         list_of_references: List[List[List[str]]] = []
@@ -132,7 +135,11 @@ class CalculateBleu(chainer.training.Extension):
                 similars = None
                 if len(converted) == 3:
                     similars = converted[2]
-                results = self.model.translate(source, similars)
+                results = self.model.translate(
+                    source,
+                    similars,
+                    max_translation_length=self.max_translation_length
+                )
                 hypotheses.extend([
                     decode_bpe([
                         self.id2word.get(id_, '<UNK>')
@@ -465,7 +472,8 @@ def train(args: argparse.Namespace):
         ), trigger=(cargs.extension_trigger * 5, 'iteration'))
         trainer.extend(CalculateBleu(
             v_iter2, model, converter=converter, device=cargs.gpu,
-            key='validation/main/bleu', id2word=target_word
+            key='validation/main/bleu', id2word=target_word,
+            max_translation_length=cargs.max_translation_length
         ), trigger=(cargs.extension_trigger * 5, 'iteration'))
 
         validation_size = len(validation_data)
@@ -478,7 +486,11 @@ def train(args: argparse.Namespace):
             similars = None
             if len(converted) == 3:
                 similars = converted[2]
-            result = model.translate(source, similars)[0].reshape((1, -1))
+            result = model.translate(
+                source,
+                similars,
+                max_translation_length=cargs.max_translation_length
+            )[0].reshape((1, -1))
 
             source_sentence = ' '.join(decode_bpe(
                 [source_word[int(word)] for word in source[0]]

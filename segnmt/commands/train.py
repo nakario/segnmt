@@ -62,10 +62,12 @@ def define_parser(parser: argparse.ArgumentParser):
     parser.add_argument('--extension-trigger', type=int, default=100,
                         help='The number of iterations to trigger extensions')
     parser.add_argument('--similar-limit', type=int, default=2,
-                        help='The number of similar sentences'),
+                        help='The number of similar sentences')
     parser.add_argument('--similar-limit-validation', type=int, default=4,
-                        help='The number of similar sentences'),
+                        help='The number of similar sentences')
     parser.add_argument('--fusion-mode', type=str, default='deep',
+                        help='')
+    parser.add_argument('--max-translation-length', type=int, default=100,
                         help='')
 
 
