@@ -21,7 +21,9 @@ class ConstArguments(NamedTuple):
     source: str
     target: str
     output: str
+    min_source_len: int
     max_source_len: int
+    min_target_len: int
     max_target_len: int
     source_dev: str
     target_dev: str
@@ -223,8 +225,8 @@ def preproc(args: Namespace):
     copy_data_with_limit(
         cargs.source, cargs.target,
         source, target,
-        1, cargs.max_source_len,
-        1, cargs.max_target_len
+        cargs.min_source_len, cargs.max_source_len,
+        cargs.min_target_len, cargs.max_target_len
     )
     if not cargs.skip_create_index:
         create_index('segnmt', 'pairs', source, target)
@@ -257,8 +259,8 @@ def preproc(args: Namespace):
     copy_data_with_limit(
         cargs.source_dev, cargs.target_dev,
         source_dev, target_dev,
-        1, cargs.max_source_len,
-        1, cargs.max_target_len
+        cargs.min_source_len, cargs.max_source_len,
+        cargs.min_target_len, cargs.max_target_len
     )
     if not cargs.skip_make_sim:
         make_sim(
