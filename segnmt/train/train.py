@@ -363,6 +363,8 @@ def train(args: argparse.Namespace):
 
     optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
+    optimizer.add_hook(chainer.optimizer.GradientClipping(1.0))
+    optimizer.add_hook(chainer.optimizer.WeightDecay(10e-6))
 
     source_vocab = load_vocab(cargs.source_vocab, cargs.source_vocabulary_size)
     target_vocab = load_vocab(cargs.target_vocab, cargs.target_vocabulary_size)
