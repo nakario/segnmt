@@ -29,7 +29,8 @@ class ElasticEngine(BaseEngine):
             index=self.index,
             doc_type=self.doc_type,
             body=body,
-            size=self.limit
+            size=self.limit,
+            request_timeout=60
         )
         return [
             (r['_id'], r['_source']['SRC'], r['_source']['TGT'])
