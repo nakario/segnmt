@@ -501,15 +501,19 @@ def train(args: argparse.Namespace):
             result_sentence = ' '.join(decode_bpe(
                 [target_word[int(word)] for word in result[0]]
             ))
-            logger.info('# source    : ' + source_sentence)
-            logger.info('# output    : ' + result_sentence)
-            logger.info('# reference : ' + target_sentence)
+            logger.info('# source       : ' + source_sentence)
+            logger.info('# output       : ' + result_sentence)
+            logger.info('# reference    : ' + target_sentence)
             if similars is not None:
                 for i, pair in enumerate(similars):
-                    retrieved_sentence = ' '.join(decode_bpe(
+                    retrieved_source = ' '.join(decode_bpe(
+                        [source_word[int(word)] for word in pair[0][0]]
+                    ))
+                    logger.info(f'# retrieved[{i}] : {retrieved_source}')
+                    retrieved_target = ' '.join(decode_bpe(
                         [target_word[int(word)] for word in pair[1][0]]
                     ))
-                    logger.info(f'# retrieved[{i}] : {retrieved_sentence}')
+                    logger.info(f'# retrieved[{i}] : {retrieved_target}')
 
         trainer.extend(
             translate,
