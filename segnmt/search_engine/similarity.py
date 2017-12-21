@@ -41,10 +41,21 @@ def _jiritsugo(s: str) -> str:
     ])
 
 
+def _hinshi(s: str) -> str:
+    result = juman.analysis("".join(s.strip().split()))
+    return " ".join([m.hinsi for m in result.mrph_list()])
+
+
 def jiritsugo_edit_distance(x: str, y: str) -> float:
     x_j = _jiritsugo(x)
     y_j = _jiritsugo(y)
     return word_level_edit_distance(x_j, y_j)
+
+
+def hinshi_edit_distance(x: str, y: str) -> float:
+    x_h = _hinshi(x)
+    y_h = _hinshi(y)
+    return word_level_edit_distance(x_h, y_h)
 
 
 functions: Dict[str, Callable[[str, str], float]] = {
@@ -52,5 +63,6 @@ functions: Dict[str, Callable[[str, str], float]] = {
     'edit-char': char_level_edit_distance,
     'bleu': bleu,
     'no-change': no_change,
-    'edit-jiritsugo': jiritsugo_edit_distance
+    'edit-jiritsugo': jiritsugo_edit_distance,
+    'edit-hinshi': hinshi_edit_distance
 }
