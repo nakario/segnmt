@@ -24,6 +24,8 @@ def define_parser(parser):
                         help='')
     parser.add_argument('--skip-create-index', action='store_true',
                         help='')
+    parser.add_argument('--skip-sleep', action='store_true',
+                        help='')
     parser.add_argument('--skip-make-sim', action='store_true',
                         help='')
     parser.add_argument('--skip-create-bpe', action='store_true',
@@ -38,6 +40,8 @@ def define_parser(parser):
                         choices=functions.keys(),
                         default=list(functions.keys())[0],
                         help='')
+    parser.add_argument('--sleep-time', type=int, default=60,
+                        help='how many seconds it sleeps')
 
 
 def run(args):

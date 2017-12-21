@@ -2,6 +2,7 @@ from argparse import Namespace
 from collections import Counter
 from logging import getLogger
 from pathlib import Path
+from time import sleep
 from typing import Callable
 from typing import List
 from typing import NamedTuple
@@ -29,12 +30,14 @@ class ConstArguments(NamedTuple):
     source_dev: str
     target_dev: str
     skip_create_index: bool
+    skip_sleep: bool
     skip_make_sim: bool
     skip_create_bpe: bool
     skip_bpe_encode: bool
     skip_make_voc: bool
     limit: int
     similarity_function: str
+    sleep_time: int
 
 
 logger = getLogger(__name__)
@@ -236,6 +239,8 @@ def preproc(args: Namespace):
     )
     if not cargs.skip_create_index:
         create_index('segnmt', 'pairs', source, target)
+    if not cargs.skip_sleep:
+        sleep(cargs.sleep_time)
     if not cargs.skip_make_sim:
         make_sim(
             source,
