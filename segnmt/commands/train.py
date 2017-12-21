@@ -65,8 +65,8 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='The number of similar sentences')
     parser.add_argument('--similar-limit-validation', type=int, default=4,
                         help='The number of similar sentences')
-    parser.add_argument('--fusion-mode', type=str, default='deep',
-                        help='')
+    parser.add_argument('--fusion-mode', choices=['deep', 'shallow'],
+                        default='deep', help='')
     parser.add_argument('--max-translation-length', type=int, default=100,
                         help='')
 
