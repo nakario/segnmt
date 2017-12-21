@@ -2,6 +2,7 @@ from argparse import Namespace
 from collections import Counter
 from logging import getLogger
 from pathlib import Path
+from typing import Callable
 from typing import List
 from typing import NamedTuple
 from typing import Union
@@ -12,7 +13,7 @@ from joblib import Parallel
 from segnmt.external_libs.bpe import learn_bpe
 from segnmt.external_libs.bpe import apply_bpe
 from segnmt.search_engine.retriever import Retriever
-from segnmt.search_engine.similarity import fuzzy_word_level_similarity
+from segnmt.search_engine.similarity import functions
 from segnmt.search_engine.elastic_engine import ElasticEngine
 from segnmt.search_engine.elastic_engine import create_index
 
@@ -33,6 +34,7 @@ class ConstArguments(NamedTuple):
     skip_bpe_encode: bool
     skip_make_voc: bool
     limit: int
+    similarity_function: str
 
 
 logger = getLogger(__name__)
@@ -163,12 +165,13 @@ def retrieve_indices(
         sentence: str,
         i: int,
         training: bool,
+        similar_function: Callable[[str, str], float],
         limit: int = -1
 ) -> List[str]:
     engine = ElasticEngine(100, 'segnmt', 'pairs')
     retriever = Retriever(
         engine,
-        fuzzy_word_level_similarity,
+        similar_function,
         limit=limit,
         training=training
     )
@@ -184,6 +187,7 @@ def make_sim(
         data: Union[Path, str],
         sim_file: Union[Path, str],
         training: bool,
+        similar_function: Callable[[str, str], float],
         limit: int = -1
 ):
     """Create a list of indices of similar sentences."""
@@ -198,7 +202,9 @@ def make_sim(
     with open(data) as src:
         sentence_list = src.readlines()
         indices_list = Parallel(n_jobs=-1, verbose=1)([
-            delayed(retrieve_indices)(sentence.strip(), i, training, limit)
+            delayed(retrieve_indices)(
+                sentence.strip(), i, training, similar_function, limit
+            )
             for i, sentence in enumerate(sentence_list)
         ])
 
@@ -235,6 +241,7 @@ def preproc(args: Namespace):
             source,
             output / Path('train_sim'),
             True,
+            functions.get(cargs.similarity_function),
             cargs.limit
         )
 
@@ -267,6 +274,7 @@ def preproc(args: Namespace):
             source_dev,
             output / Path('dev_sim'),
             False,
+            functions.get(cargs.similarity_function),
             cargs.limit
         )
 

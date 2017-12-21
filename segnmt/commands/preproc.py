@@ -1,4 +1,5 @@
 from segnmt.preproc.preproc import preproc
+from segnmt.search_engine.similarity import functions
 
 
 def define_parser(parser):
@@ -32,6 +33,10 @@ def define_parser(parser):
     parser.add_argument('--skip-make-voc', action='store_true',
                         help='')
     parser.add_argument('--limit', type=int, default=-1,
+                        help='')
+    parser.add_argument('--similarity-function', type=str,
+                        choices=functions.keys(),
+                        default=list(functions.keys())[0],
                         help='')
 
 
