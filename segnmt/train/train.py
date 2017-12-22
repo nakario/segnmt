@@ -442,6 +442,11 @@ def train(args: argparse.Namespace):
             trigger=(cargs.extension_trigger, 'iteration'),
             file_name='beta.png'
         ))
+        trainer.extend(extensions.PlotReport(
+            ['main/max_score'],
+            trigger=(cargs.extension_trigger, 'iteration'),
+            file_name='max_score.png'
+        ))
     else:
         logger.warning('PlotReport is not available.')
 
