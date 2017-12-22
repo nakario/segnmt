@@ -193,8 +193,11 @@ class Decoder(chainer.Chain):
 
             previous_embedding = self.embed_id(target_id)
 
-        self.averaged_gate = F.average(self.gate_sum / float(target.shape[1]))
-        self.averaged_beta = F.average(beta)
+        if context_memory is not None:
+            self.averaged_gate = \
+                F.average(self.gate_sum / float(target.shape[1]))
+            self.averaged_beta = F.average(beta)
+
         return total_loss / total_predictions
 
     def fusion_state(
