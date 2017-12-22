@@ -129,6 +129,7 @@ class Decoder(chainer.Chain):
         self.gate_sum = None
         self.averaged_gate = None
         self.averaged_beta = None
+        self.max_score = self.xp.zeros((), 'f')
 
     def __call__(
             self,
@@ -223,6 +224,10 @@ class Decoder(chainer.Chain):
         )
         assert matching_score.shape == \
             (minibatch_size, context_memory_size)
+        self.max_score = self.xp.maximum(
+            self.max_score,
+            self.xp.max(matching_score.array)
+        )
 
         averaged_state = F.sum(
             F.scale(
@@ -283,6 +288,10 @@ class Decoder(chainer.Chain):
         )
         assert matching_score.shape == \
                (minibatch_size, context_memory_size)
+        self.max_score = self.xp.maximum(
+            self.max_score,
+            self.xp.max(matching_score.array)
+        )
 
         averaged_state = F.sum(
             F.scale(

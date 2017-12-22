@@ -65,6 +65,7 @@ class EncoderDecoder(chainer.Chain):
             chainer.report({'lambda': self.dec.E.l.array}, self)
             chainer.report({'gate': self.dec.averaged_gate.array}, self)
             chainer.report({'beta': self.dec.averaged_beta.array}, self)
+            chainer.report({'max_score': self.dec.max_score}, self)
         return loss
 
     def translate(
