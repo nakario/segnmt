@@ -60,12 +60,12 @@ class EncoderDecoder(chainer.Chain):
         if similar_sentences is not None:
             context_memory = self.generate_context_memory(similar_sentences)
         loss = self.dec(encoded, target, context_memory)
-        chainer.report({'loss': loss.array}, self)
+        chainer.report({'loss': loss}, self)
         if similar_sentences is not None:
-            chainer.report({'lambda': self.dec.E.l.array}, self)
-            chainer.report({'gate': self.dec.averaged_gate.array}, self)
-            chainer.report({'beta': self.dec.averaged_beta.array}, self)
-            chainer.report({'max_score': self.dec.max_score}, self)
+            chainer.report({'lambda': self.dec.E.l}, self)
+            chainer.report({'gate': self.dec.averaged_gate}, self)
+            chainer.report({'beta': self.dec.averaged_beta}, self)
+            chainer.report({'max_score': Variable(self.dec.max_score)}, self)
         return loss
 
     def translate(
