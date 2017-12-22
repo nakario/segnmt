@@ -126,6 +126,9 @@ class Decoder(chainer.Chain):
         self.encoder_output_size = encoder_output_size
         assert mode in ['deep', 'shallow']
         self.mode = mode
+        self.gate_sum = None
+        self.averaged_gate = None
+        self.averaged_beta = None
 
     def __call__(
             self,
@@ -187,6 +190,8 @@ class Decoder(chainer.Chain):
 
             previous_embedding = self.embed_id(target_id)
 
+        self.averaged_gate = F.average(self.gate_sum / float(target.shape[1]))
+        self.averaged_beta = F.average(beta)
         return total_loss / total_predictions
 
     def fusion_state(
@@ -231,6 +236,10 @@ class Decoder(chainer.Chain):
 
         gate = self.compute_gate(context, state, averaged_state)
         assert gate.shape == (minibatch_size,)
+        if self.gate_sum is not None:
+            self.gate_sum += gate.array
+        else:
+            self.gate_sum = gate.array
 
         fusion = F.scale(averaged_state, gate, axis=0) \
             + F.scale(state, (1. - gate), axis=0)
@@ -287,6 +296,10 @@ class Decoder(chainer.Chain):
 
         gate = self.compute_gate(context, state, averaged_state)
         assert gate.shape == (minibatch_size,)
+        if self.gate_sum is not None:
+            self.gate_sum += gate.array
+        else:
+            self.gate_sum = gate.array
 
         flatten_indices = (
                 associated_indices +
