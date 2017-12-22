@@ -22,7 +22,7 @@ class SimilarityScoreFunction(chainer.Chain):
             self.M = Parameter(chainer.initializers.Identity())
             if in_size is not None:
                 self.M.initialize((in_size, in_size))
-            self.l = Parameter(chainer.initializers.Zero(), 1)
+            self.l = Parameter(chainer.initializers.Zero(), ())
 
     def __call__(
             self,
@@ -40,7 +40,7 @@ class SimilarityScoreFunction(chainer.Chain):
         if self.M.array is None:
             self.M.initialize((encoder_output_size, encoder_output_size))
         if self.l.array is None:
-            self.l.initialize((1,))
+            self.l.initialize(())
 
         return F.squeeze(
             F.matmul(
@@ -48,7 +48,7 @@ class SimilarityScoreFunction(chainer.Chain):
                 F.expand_dims(F.linear(context, self.M), axis=2)
             ),
             axis=2
-        ) - F.scale(beta, F.broadcast_to(self.l, beta.shape[:1]), axis=0)
+        ) - F.scale(beta, self.l, axis=0)
 
 
 class GateFunction(chainer.Chain):
