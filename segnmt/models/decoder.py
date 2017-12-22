@@ -129,7 +129,7 @@ class Decoder(chainer.Chain):
         self.gate_sum = None
         self.averaged_gate = None
         self.averaged_beta = None
-        self.max_score = self.xp.zeros((), 'f')
+        self.max_score = None
 
     def __call__(
             self,
@@ -146,6 +146,7 @@ class Decoder(chainer.Chain):
         if self.bos_state.array is None:
             self.bos_state.initialize((1, self.hidden_layer_size))
 
+        self.max_score = self.xp.zeros((), 'f')
         self.attention.precompute(encoded)
         cell = Variable(
             self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
