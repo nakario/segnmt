@@ -146,6 +146,7 @@ class Decoder(chainer.Chain):
         if self.bos_state.array is None:
             self.bos_state.initialize((1, self.hidden_layer_size))
 
+        self.gate_sum = self.xp.zeros((minibatch_size,), 'f')
         self.max_score = self.xp.zeros((), 'f')
         self.attention.precompute(encoded)
         cell = Variable(
@@ -390,6 +391,8 @@ class Decoder(chainer.Chain):
         if self.bos_state.array is None:
             self.bos_state.initialize((1, self.hidden_layer_size))
 
+        self.gate_sum = self.xp.zeros((sentence_count,), 'f')
+        self.max_score = self.xp.zeros((), 'f')
         self.attention.precompute(encoded)
         cell = Variable(
             self.xp.zeros((sentence_count, self.hidden_layer_size), 'f')
