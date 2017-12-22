@@ -427,6 +427,26 @@ def train(args: argparse.Namespace):
             trigger=(cargs.extension_trigger, 'iteration'),
             file_name=cargs.bleu_plot_file
         ))
+        trainer.extend(extensions.PlotReport(
+            ['main/lambda'],
+            trigger=(cargs.extension_trigger, 'iteration'),
+            file_name='lambda.png'
+        ))
+        trainer.extend(extensions.PlotReport(
+            ['main/gate'],
+            trigger=(cargs.extension_trigger, 'iteration'),
+            file_name='gate.png'
+        ))
+        trainer.extend(extensions.PlotReport(
+            ['main/beta'],
+            trigger=(cargs.extension_trigger, 'iteration'),
+            file_name='beta.png'
+        ))
+        trainer.extend(extensions.PlotReport(
+            ['main/max_score'],
+            trigger=(cargs.extension_trigger, 'iteration'),
+            file_name='max_score.png'
+        ))
     else:
         logger.warning('PlotReport is not available.')
 

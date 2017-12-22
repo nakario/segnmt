@@ -126,6 +126,10 @@ class Decoder(chainer.Chain):
         self.encoder_output_size = encoder_output_size
         assert mode in ['deep', 'shallow']
         self.mode = mode
+        self.gate_sum = None
+        self.averaged_gate = None
+        self.averaged_beta = None
+        self.max_score = None
 
     def __call__(
             self,
@@ -142,6 +146,8 @@ class Decoder(chainer.Chain):
         if self.bos_state.array is None:
             self.bos_state.initialize((1, self.hidden_layer_size))
 
+        self.gate_sum = self.xp.zeros((minibatch_size,), 'f')
+        self.max_score = self.xp.zeros((), 'f')
         self.attention.precompute(encoded)
         cell = Variable(
             self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
@@ -187,6 +193,8 @@ class Decoder(chainer.Chain):
 
             previous_embedding = self.embed_id(target_id)
 
+        self.averaged_gate = F.average(self.gate_sum / float(target.shape[1]))
+        self.averaged_beta = F.average(beta)
         return total_loss / total_predictions
 
     def fusion_state(
@@ -218,6 +226,10 @@ class Decoder(chainer.Chain):
         )
         assert matching_score.shape == \
             (minibatch_size, context_memory_size)
+        self.max_score = self.xp.maximum(
+            self.max_score,
+            self.xp.max(matching_score.array)
+        )
 
         averaged_state = F.sum(
             F.scale(
@@ -231,6 +243,10 @@ class Decoder(chainer.Chain):
 
         gate = self.compute_gate(context, state, averaged_state)
         assert gate.shape == (minibatch_size,)
+        if self.gate_sum is not None:
+            self.gate_sum += gate.array
+        else:
+            self.gate_sum = gate.array
 
         fusion = F.scale(averaged_state, gate, axis=0) \
             + F.scale(state, (1. - gate), axis=0)
@@ -274,6 +290,10 @@ class Decoder(chainer.Chain):
         )
         assert matching_score.shape == \
                (minibatch_size, context_memory_size)
+        self.max_score = self.xp.maximum(
+            self.max_score,
+            self.xp.max(matching_score.array)
+        )
 
         averaged_state = F.sum(
             F.scale(
@@ -287,6 +307,10 @@ class Decoder(chainer.Chain):
 
         gate = self.compute_gate(context, state, averaged_state)
         assert gate.shape == (minibatch_size,)
+        if self.gate_sum is not None:
+            self.gate_sum += gate.array
+        else:
+            self.gate_sum = gate.array
 
         flatten_indices = (
                 associated_indices +
@@ -367,6 +391,8 @@ class Decoder(chainer.Chain):
         if self.bos_state.array is None:
             self.bos_state.initialize((1, self.hidden_layer_size))
 
+        self.gate_sum = self.xp.zeros((sentence_count,), 'f')
+        self.max_score = self.xp.zeros((), 'f')
         self.attention.precompute(encoded)
         cell = Variable(
             self.xp.zeros((sentence_count, self.hidden_layer_size), 'f')
