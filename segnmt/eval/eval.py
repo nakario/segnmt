@@ -587,8 +587,8 @@ def evaluate(args: argparse.Namespace):
     assert len(list_of_references) == len(hypotheses)
     with open(cargs.translation_output_file, 'w') as output:
         for i in range(len(list_of_references)):
-            output.write(f"src: {' '.join(hypotheses[i])}\n")
-            output.write(f"out: {' '.join(list_of_references[i][0])}\n")
+            output.write(f"src: {' '.join(list_of_references[i][0])}\n\n")
+            output.write(f"out: {' '.join(hypotheses[i])}\n")
     print("start calc bleu")
     bleu = bleu_score.corpus_bleu(
         list_of_references,
