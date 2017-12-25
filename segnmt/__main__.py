@@ -8,6 +8,7 @@ from logging import INFO
 from typing import List
 from typing import Optional
 
+import segnmt.commands.eval as eval_
 import segnmt.commands.preproc as preproc
 import segnmt.commands.train as train
 
@@ -19,6 +20,10 @@ def main(arguments: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(prog='segnmt')
     parser.set_defaults(run=lambda _: parser.print_help())
     subparsers = parser.add_subparsers()
+
+    eval_parser = subparsers.add_parser('eval')
+    eval_.define_parser(eval_parser)
+    eval_parser.set_defaults(run=eval_.run)
 
     preproc_parser = subparsers.add_parser('preproc')
     preproc.define_parser(preproc_parser)
