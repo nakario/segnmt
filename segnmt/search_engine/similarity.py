@@ -58,11 +58,36 @@ def hinshi_edit_distance(x: str, y: str) -> float:
     return word_level_edit_distance(x_h, y_h)
 
 
+def ngram_coverage(x: str, y: str) -> float:
+    x_1 = x.strip().split()
+    x_2 = list(zip(x_1, x_1[1:]))
+    x_3 = list(zip(x_1, x_1[1:], x_1[2:]))
+    x_4 = list(zip(x_1, x_1[1:], x_1[2:], x_1[3:]))
+
+    y_1 = y.strip().split()
+    y_2 = list(zip(y_1, y_1[1:]))
+    y_3 = list(zip(y_1, y_1[1:], y_1[2:]))
+    y_4 = list(zip(y_1, y_1[1:], y_1[2:], y_1[3:]))
+
+    p_1 = sum(min(x_1.count(gram), y_1.count(gram)) for gram in set(x_1))
+    p_2 = sum(min(x_2.count(gram), y_2.count(gram)) for gram in set(x_2)) + 1
+    p_3 = sum(min(x_3.count(gram), y_3.count(gram)) for gram in set(x_3)) + 1
+    p_4 = sum(min(x_4.count(gram), y_4.count(gram)) for gram in set(x_4)) + 1
+
+    a_1 = p_1 * 1.0 / len(x_1)
+    a_2 = p_2 * 1.0 / (len(x_2) + 1.0)
+    a_3 = p_3 * 1.0 / (len(x_3) + 1.0)
+    a_4 = p_4 * 1.0 / (len(x_4) + 1.0)
+
+    return a_1 ** 0.25 * a_2 ** 0.25 * a_3 ** 0.25 * a_4 ** 0.25
+
+
 functions: Dict[str, Callable[[str, str], float]] = {
     'edit-word': word_level_edit_distance,
     'edit-char': char_level_edit_distance,
     'bleu': bleu,
     'no-change': no_change,
     'edit-jiritsugo': jiritsugo_edit_distance,
-    'edit-hinshi': hinshi_edit_distance
+    'edit-hinshi': hinshi_edit_distance,
+    'ngram_coverage': ngram_coverage
 }
