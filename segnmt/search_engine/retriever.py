@@ -4,7 +4,6 @@ from itertools import chain
 from typing import Callable
 from typing import Iterable
 from typing import List
-from typing import Optional
 from typing import Tuple
 
 
@@ -53,7 +52,7 @@ class Retriever:
             -> Iterable[Tuple[str, str, str]]:
         return sorted(pairs,
                       reverse=True,
-                      key=lambda pair: self.similarity(pair[1], src))
+                      key=lambda pair: self.similarity(src, pair[1]))
 
 
 def flatten(x: Iterable[Iterable[str]]) -> List[str]:
