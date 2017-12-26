@@ -64,10 +64,16 @@ def ngram_coverage(x: str, y: str) -> float:
     x_3 = list(zip(x_1, x_1[1:], x_1[2:]))
     x_4 = list(zip(x_1, x_1[1:], x_1[2:], x_1[3:]))
 
+    if len(x_1) == 0:
+        return 0.0
+
     y_1 = y.strip().split()
     y_2 = list(zip(y_1, y_1[1:]))
     y_3 = list(zip(y_1, y_1[1:], y_1[2:]))
     y_4 = list(zip(y_1, y_1[1:], y_1[2:], y_1[3:]))
+
+    if len(y_1) == 0:
+        return 0.0
 
     p_1 = sum(min(x_1.count(gram), y_1.count(gram)) for gram in set(x_1))
     p_2 = sum(min(x_2.count(gram), y_2.count(gram)) for gram in set(x_2)) + 1
