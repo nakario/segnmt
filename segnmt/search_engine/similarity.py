@@ -95,5 +95,5 @@ functions: Dict[str, Callable[[str, str], float]] = {
     'no-change': no_change,
     'edit-jiritsugo': jiritsugo_edit_distance,
     'edit-hinshi': hinshi_edit_distance,
-    'ngram_coverage': ngram_coverage
+    'ngram-coverage': ngram_coverage
 }
