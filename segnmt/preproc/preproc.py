@@ -29,6 +29,8 @@ class ConstArguments(NamedTuple):
     max_target_len: int
     source_dev: str
     target_dev: str
+    source_test: str
+    target_test: str
     skip_create_index: bool
     skip_sleep: bool
     skip_make_sim: bool
@@ -228,6 +230,8 @@ def preproc(args: Namespace):
         logger.warning(f'{output.absolute()} does not exist')
         output.mkdir(parents=True, exist_ok=True)
         logger.info(f'created {output.absolute()}')
+
+    # training dataset
     source = output / Path('source')
     target = output / Path('target')
 
@@ -264,6 +268,7 @@ def preproc(args: Namespace):
         make_voc(source_compressed, output / Path('source_bpe_voc'))
         make_voc(target_compressed, output / Path('target_bpe_voc'))
 
+    # validation dataset
     if cargs.source_dev is None or cargs.target_dev is None:
         return
     source_dev = output / Path('source_dev')
@@ -288,3 +293,29 @@ def preproc(args: Namespace):
     if not cargs.skip_bpe_encode:
         bpe_encode(source_dev, source_dev_compressed, bpe_source)
         bpe_encode(target_dev, target_dev_compressed, bpe_target)
+
+    # test dataset
+    if cargs.source_test is None or cargs.target_test is None:
+        return
+    source_test = output / Path('source_test')
+    target_test = output / Path('target_test')
+    copy_data_with_limit(
+        cargs.source_test, cargs.target_test,
+        source_test, target_test,
+        1, 1000,
+        1, 1000
+    )
+    if not cargs.skip_make_sim:
+        make_sim(
+            source_test,
+            output / Path('test_sim'),
+            False,
+            functions.get(cargs.similarity_function),
+            cargs.limit
+        )
+
+    source_test_compressed = output / Path('source_test_compressed')
+    target_test_compressed = output / Path('target_test_compressed')
+    if not cargs.skip_bpe_encode:
+        bpe_encode(source_test, source_test_compressed, bpe_source)
+        bpe_encode(target_test, target_test_compressed, bpe_target)
