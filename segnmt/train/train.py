@@ -116,6 +116,7 @@ class CalculateBleu(chainer.training.Extension):
         self.device = device
         self.key = key
         self.max_translation_length = max_translation_length
+        self.best_bleu = 0.0
 
     def __call__(self, trainer):
         list_of_references: List[List[List[str]]] = []
@@ -151,6 +152,11 @@ class CalculateBleu(chainer.training.Extension):
             hypotheses
         )
         chainer.report({self.key: bleu})
+        if bleu > self.best_bleu:
+            self.best_bleu = bleu
+            print("saving model...")
+            chainer.serializers.save_npz("best_bleu.npz", self.model)
+            print("saved model.")
 
 
 def convert(
