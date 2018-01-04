@@ -22,6 +22,10 @@ def define_parser(parser):
                         help='')
     parser.add_argument('--target-dev', type=str,
                         help='')
+    parser.add_argument('--source-test', type=str,
+                        help='')
+    parser.add_argument('--target-test', type=str,
+                        help='')
     parser.add_argument('--skip-create-index', action='store_true',
                         help='')
     parser.add_argument('--skip-sleep', action='store_true',
