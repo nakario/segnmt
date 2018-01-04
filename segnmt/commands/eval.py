@@ -35,8 +35,6 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='GPU ID (-1 means CPU)')
     parser.add_argument('--minibatch-size', type=int, default=64,
                         help='')
-    parser.add_argument('--epoch', type=int, default=20,
-                        help='')
     parser.add_argument('--source-vocab', type=str, required=True,
                         help='')
     parser.add_argument('--target-vocab', type=str, required=True,
@@ -45,28 +43,18 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--training-target', type=str, required=True,
                         help='')
-    parser.add_argument('--validation-source', default=None,
+    parser.add_argument('--validation-source', type=str, required=True,
                         help='')
-    parser.add_argument('--validation-target', default=None,
+    parser.add_argument('--validation-target', type=str, required=True,
                         help='')
     parser.add_argument('--similar-sentence-indices', default=None,
                         help='')
     parser.add_argument('--similar-sentence-indices-validation', default=None,
                         help='')
-    parser.add_argument('--loss-plot-file', type=str, default='loss.png',
-                        help='')
-    parser.add_argument('--bleu-plot-file', type=str, default='bleu.png',
-                        help='')
     parser.add_argument('--translation-output-file', type=str,
                         default='output.txt', help='')
-    parser.add_argument('--resume-file', default=None,
-                        help='')
-    parser.add_argument('--extension-trigger', type=int, default=100,
-                        help='The number of iterations to trigger extensions')
-    parser.add_argument('--similar-limit', type=int, default=2,
-                        help='The number of similar sentences')
-    parser.add_argument('--similar-limit-validation', type=int, default=4,
-                        help='The number of similar sentences')
+    parser.add_argument('--resume-file', type=str, required=True,
+                        help='best_bleu.npz')
     parser.add_argument('--fusion-mode', choices=['deep', 'shallow'],
                         default='deep', help='')
     parser.add_argument('--max-translation-length', type=int, default=100,
