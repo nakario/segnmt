@@ -107,7 +107,8 @@ def evaluate(args: argparse.Namespace):
 
     target_sentences: List[List[List[str]]]
     with open(cargs.validation_target) as f:
-        target_sentences = map(lambda x: [x.strip().split()], f.readlines())
+        target_sentences = \
+            list(map(lambda x: [x.strip().split()], f.readlines()))
 
     target_word = {index: word for word, index in target_vocab.items()}
 
