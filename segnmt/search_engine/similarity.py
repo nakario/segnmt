@@ -8,6 +8,7 @@ from pyknp import Juman
 
 
 juman = Juman()
+N = 100
 
 
 def char_level_edit_distance(x: str, y: str) -> float:
@@ -88,6 +89,22 @@ def ngram_coverage(x: str, y: str) -> float:
     return a_1 ** 0.25 * a_2 ** 0.25 * a_3 ** 0.25 * a_4 ** 0.25
 
 
+def match_length(x: str, y: str) -> float:
+    xs = x.strip().split()
+    substrs_list: List[List[str]] = [
+        [
+            ' '.join(xs[start:start+length])
+            for start in range(len(xs) - length + 1)
+        ]
+        for length in range(1, len(xs) + 1)
+    ]
+    score = sum([
+        sum([y.count(substr) * (N ** i) for substr in substrs])
+        for i, substrs in enumerate(substrs_list)
+    ])
+    return float(score)
+
+
 functions: Dict[str, Callable[[str, str], float]] = {
     'edit-word': word_level_edit_distance,
     'edit-char': char_level_edit_distance,
@@ -95,5 +112,6 @@ functions: Dict[str, Callable[[str, str], float]] = {
     'no-change': no_change,
     'edit-jiritsugo': jiritsugo_edit_distance,
     'edit-hinshi': hinshi_edit_distance,
-    'ngram-coverage': ngram_coverage
+    'ngram-coverage': ngram_coverage,
+    'match-length': match_length
 }
