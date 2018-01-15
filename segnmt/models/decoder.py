@@ -124,6 +124,7 @@ class Decoder(chainer.Chain):
         self.word_embeddings_size = word_embeddings_size
         self.hidden_layer_size = hidden_layer_size
         self.encoder_output_size = encoder_output_size
+        self.context_memory: Optional[Tuple[ndarray, ndarray, ndarray]] = None
         assert mode in ['deep', 'shallow']
         self.mode = mode
         self.gate_sum = None
@@ -143,47 +144,22 @@ class Decoder(chainer.Chain):
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
 
-        if self.bos_state.array is None:
-            self.bos_state.initialize((1, self.hidden_layer_size))
+        self.setup(encoded, context_memory)
 
-        self.gate_sum = self.xp.zeros((minibatch_size,), 'f')
-        self.max_score = self.xp.zeros((), 'f')
-        self.attention.precompute(encoded)
-        cell = Variable(
-            self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
-        )
-        state = F.broadcast_to(
-            self.bos_state, (minibatch_size, self.hidden_layer_size)
-        )
-        previous_embedding = self.embed_id(
-            Variable(self.xp.full((minibatch_size,), EOS, 'i'))
-        )
+        cell, state, previous_words, beta = \
+            self.get_initial_states(minibatch_size)
+
         total_loss = Variable(self.xp.array(0, 'f'))
         total_predictions = 0
 
-        beta = None
-        if context_memory is not None:
-            context_memory_size = context_memory[0].shape[1]
-            beta = Variable(
-                self.xp.zeros((minibatch_size, context_memory_size), 'f')
-            )
-
         for target_id in self.xp.hsplit(target, target.shape[1]):
             target_id = target_id.reshape((minibatch_size,))
-            context = self.attention(state, previous_embedding)
-            assert context.shape == (minibatch_size, self.encoder_output_size)
-            concatenated = F.concat((previous_embedding, context))
-            cell, state = self.rnn(cell, state, concatenated)
+            cell, state, context, concatenated = \
+                self.advance_one_step(cell, state, previous_words)
 
-            if context_memory is not None and self.mode == 'deep':
-                state, beta = \
-                    self.fusion_state(context_memory, context, state, beta)
-            all_concatenated = F.concat((concatenated, state))
-            logit = self.linear(self.maxout(all_concatenated))
-            if context_memory is not None and self.mode == 'shallow':
-                logit, beta = self.fusion_logit(
-                    context_memory, context, state, logit, beta
-                )
+            logit, state, beta = self.compute_logit(
+                concatenated, state, context, beta
+            )
 
             current_sentence_count = self.xp.sum(target_id != PAD)
 
@@ -191,31 +167,96 @@ class Decoder(chainer.Chain):
             total_loss += loss * current_sentence_count
             total_predictions += current_sentence_count
 
-            previous_embedding = self.embed_id(target_id)
+            previous_words = target_id
 
-        if context_memory is not None:
+        if self.context_memory is not None:
             self.averaged_gate = \
                 F.average(self.gate_sum / float(target.shape[1]))
             self.averaged_beta = F.average(beta)
 
         return total_loss / total_predictions
 
+    def setup(
+            self,
+            encoded: Variable,
+            context_memory: Optional[Tuple[ndarray, ndarray, ndarray]]
+    ):
+        minibatch_size = encoded.shape[0]
+
+        if self.bos_state.array is None:
+            self.bos_state.initialize((1, self.hidden_layer_size))
+        if context_memory is not None:
+            self.context_memory = context_memory
+            self.gate_sum = self.xp.zeros((minibatch_size,), 'f')
+            self.max_score = self.xp.zeros((), 'f')
+        self.attention.precompute(encoded)
+
+    def get_initial_states(
+            self,
+            minibatch_size: int
+    ) -> Tuple[Variable, Variable, ndarray, Optional[Variable]]:
+        cell = Variable(
+            self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
+        )
+        state = F.broadcast_to(
+            self.bos_state, (minibatch_size, self.hidden_layer_size)
+        )
+        previous_words = self.xp.full((minibatch_size,), EOS, 'i')
+        beta = None
+        if self.context_memory is not None:
+            context_memory_size = self.context_memory[0].shape[1]
+            beta = Variable(
+                self.xp.zeros((minibatch_size, context_memory_size), 'f')
+            )
+        return cell, state, previous_words, beta
+
+    def advance_one_step(
+            self,
+            cell: Variable,
+            state: Variable,
+            previous_words: ndarray
+    ) -> Tuple[Variable, Variable, Variable, Variable]:
+        minibatch_size = cell.shape[0]
+        previous_embedding = self.embed_id(previous_words)
+        context = self.attention(state, previous_embedding)
+        assert context.shape == (minibatch_size, self.encoder_output_size)
+        concatenated = F.concat((previous_embedding, context))
+        cell, state = self.rnn(cell, state, concatenated)
+        return cell, state, context, concatenated
+
+    def compute_logit(
+            self,
+            concatenated: Variable,
+            state: Variable,
+            context: Variable,
+            beta: Optional[Variable]
+    ) -> Tuple[Variable, Variable, Variable]:
+        if self.context_memory is not None and self.mode == 'deep':
+            state, beta = \
+                self.fusion_state(context, state, beta)
+        all_concatenated = F.concat((concatenated, state))
+        logit = self.linear(self.maxout(all_concatenated))
+        if self.context_memory is not None and self.mode == 'shallow':
+            logit, beta = self.fusion_logit(
+                context, state, logit, beta
+            )
+        return logit, state, beta
+
     def fusion_state(
             self,
-            context_memory: Tuple[ndarray, ndarray, ndarray],
             context: Variable,
             state: Variable,
             beta: Variable
     ) -> Tuple[Variable, Variable]:
         minibatch_size = state.shape[0]
-        associated_contexts = context_memory[0]
+        associated_contexts = self.context_memory[0]
         context_memory_size = associated_contexts.shape[1]
         assert associated_contexts.shape == (
             minibatch_size,
             context_memory_size,
             self.encoder_output_size
         )
-        associated_states = context_memory[1]
+        associated_states = self.context_memory[1]
         assert associated_states.shape == (
             minibatch_size,
             context_memory_size,
@@ -260,27 +301,26 @@ class Decoder(chainer.Chain):
 
     def fusion_logit(
             self,
-            context_memory: Tuple[ndarray, ndarray, ndarray],
             context: Variable,
             state: Variable,
             logit: Variable,
             beta: Variable
     ) -> Tuple[Variable, Variable]:
         minibatch_size = state.shape[0]
-        associated_contexts = context_memory[0]
+        associated_contexts = self.context_memory[0]
         context_memory_size = associated_contexts.shape[1]
         assert associated_contexts.shape == (
             minibatch_size,
             context_memory_size,
             self.encoder_output_size
         )
-        associated_states = context_memory[1]
+        associated_states = self.context_memory[1]
         assert associated_states.shape == (
             minibatch_size,
             context_memory_size,
             self.hidden_layer_size
         )
-        associated_indices = context_memory[2]
+        associated_indices = self.context_memory[2]
         assert associated_indices.shape == (
             minibatch_size,
             context_memory_size
@@ -355,28 +395,18 @@ class Decoder(chainer.Chain):
         assert encoder_output_size == self.encoder_output_size
         assert target.shape[0] == minibatch_size
 
-        if self.bos_state.array is None:
-            self.bos_state.initialize((1, self.hidden_layer_size))
+        self.setup(encoded, None)
 
-        self.attention.precompute(encoded)
-        cell = Variable(
-            self.xp.zeros((minibatch_size, self.hidden_layer_size), 'f')
-        )
-        state = F.broadcast_to(
-            self.bos_state, (minibatch_size, self.hidden_layer_size)
-        )
-        previous_embedding = self.embed_id(
-            Variable(self.xp.full((minibatch_size,), EOS, 'i'))
-        )
+        cell, state, previous_words, _ = \
+            self.get_initial_states(minibatch_size)
+
         keys = []
 
         for target_id in self.xp.hsplit(target, target.shape[1]):
             target_id = target_id.reshape((minibatch_size,))
-            context = self.attention(state, previous_embedding)
-            assert context.shape == (minibatch_size, self.encoder_output_size)
-            concatenated = F.concat((previous_embedding, context))
-            cell, state = self.rnn(cell, state, concatenated)
-            previous_embedding = self.embed_id(target_id)
+            cell, state, context, _ = \
+                self.advance_one_step(cell, state, previous_words)
+            previous_words = target_id
             keys.append((context.data, state.data, target_id))
 
         return keys
@@ -391,52 +421,25 @@ class Decoder(chainer.Chain):
     ) -> List[ndarray]:
         sentence_count = encoded.shape[0]
 
-        if self.bos_state.array is None:
-            self.bos_state.initialize((1, self.hidden_layer_size))
+        self.setup(encoded, context_memory)
 
-        self.gate_sum = self.xp.zeros((sentence_count,), 'f')
-        self.max_score = self.xp.zeros((), 'f')
-        self.attention.precompute(encoded)
-        cell = Variable(
-            self.xp.zeros((sentence_count, self.hidden_layer_size), 'f')
-        )
-        state = F.broadcast_to(
-            self.bos_state, (sentence_count, self.hidden_layer_size)
-        )
-        previous_embedding = self.embed_id(
-            Variable(self.xp.full((sentence_count,), EOS, 'i'))
-        )
+        cell, state, previous_words, beta = \
+            self.get_initial_states(sentence_count)
+
         result = []
 
-        beta = None
-        if context_memory is not None:
-            context_memory_size = context_memory[0].shape[1]
-            beta = Variable(
-                self.xp.zeros((sentence_count, context_memory_size), 'f')
-            )
-
         for _ in range(max_length):
-            context = self.attention(state, previous_embedding)
-            assert context.shape == \
-                (sentence_count, self.encoder_output_size)
-            concatenated = F.concat((previous_embedding, context))
+            cell, state, context, concatenated = \
+                self.advance_one_step(cell, state, previous_words)
 
-            cell, state = self.rnn(cell, state, concatenated)
-
-            if context_memory is not None and self.mode == 'deep':
-                state, beta = \
-                    self.fusion_state(context_memory, context, state, beta)
-            all_concatenated = F.concat((concatenated, state))
-            logit = self.linear(self.maxout(all_concatenated))
-            if context_memory is not None and self.mode == 'shallow':
-                logit, beta = self.fusion_logit(
-                    context_memory, context, state, logit, beta
-                )
+            logit, state, beta = self.compute_logit(
+                concatenated, state, context, beta
+            )
 
             output_id = F.reshape(F.argmax(logit, axis=1), (sentence_count,))
             result.append(output_id)
 
-            previous_embedding = self.embed_id(output_id)
+            previous_words = output_id
 
         # Remove words after <EOS>
         outputs = F.separate(F.transpose(F.vstack(result)), axis=0)

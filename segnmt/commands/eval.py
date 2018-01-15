@@ -53,11 +53,13 @@ def define_parser(parser: argparse.ArgumentParser):
                         help='')
     parser.add_argument('--translation-output-file', type=str,
                         default='output.txt', help='')
-    parser.add_argument('--resume-file', type=str, required=True,
-                        help='best_bleu.npz')
+    parser.add_argument('--resume-files', type=str, required=True,
+                        help='comma separated filepath list')
     parser.add_argument('--fusion-mode', choices=['deep', 'shallow'],
                         default='deep', help='')
     parser.add_argument('--max-translation-length', type=int, default=100,
+                        help='')
+    parser.add_argument('--beam-width', type=int, default=5,
                         help='')
 
 
