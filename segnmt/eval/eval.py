@@ -95,7 +95,7 @@ def compute_next_states_and_scores(
     return combined_scores, new_states
 
 
-def iterate_best_score(scores: ndarray, beam_width: int) -> Generator[Tuple[int, int, float]]:
+def iterate_best_score(scores: ndarray, beam_width: int) -> Generator[Tuple[int, int, float], None, None]:
     case_, voc_size = scores.shape
 
     costs_flattened: np.ndarray = chainer.cuda.to_cpu(-scores).ravel()
@@ -130,7 +130,14 @@ def update_next_lists(
                 Variable(state.cell.array[case].reshape(1, -1)),
                 Variable(state.hidden.array[case].reshape(1, -1)),
                 Variable(state.beta.array[case].reshape(1, -1))
-            ) for state in states
+            )
+            if state.beta is not None else
+            ModelState(
+                Variable(state.cell.array[case].reshape(1, -1)),
+                Variable(state.hidden.array[case].reshape(1, -1)),
+                None
+            )
+            for state in states
         ])
         next_words_list.append(idx_in_case)
         next_score_list.append(-cost)
@@ -162,11 +169,12 @@ def advance_one_step(
         translation_states: TranslationStates,
         finished_translations: List,
         beam_width: int
-) -> TranslationStates:
+) -> Optional[TranslationStates]:
     xp = models[0].xp
     translations = translation_states.translations
     scores = translation_states.scores
     states = translation_states.states
+    assert len(states) > 0
     words = translation_states.words
     combined_scores, new_states = compute_next_states_and_scores(models, states, words)
 
@@ -177,12 +185,17 @@ def advance_one_step(
 
     next_states_list, next_words_list, next_score_list, next_translations_list = compute_next_lists(new_states, translations, word_scores, finished_translations, beam_width)
 
+    if len(next_states_list) == 0:
+        return None
+
     concatenated_next_states_list = []
     for ss in zip(*next_states_list): # loops for len(models) times
         # concat beams
         cell = F.concat([s.cell for s in ss], axis=0)
         hidden = F.concat([s.hidden for s in ss], axis=0)
-        beta = F.concat([s.beta for s in ss], axis=0)
+        beta = None
+        if ss[0].beta is not None:
+            beta = F.concat([s.beta for s in ss], axis=0)
         concatenated_next_states_list.append(
             ModelState(cell, hidden, beta)
         )
@@ -205,11 +218,11 @@ def translate_ensemble(
     xp = chainer.cuda.get_array_module(source)
     assert source.shape[0] == 1
     encodeds = [model.enc(source) for model in models]
-    context_memories = None
-    if similars is not None:
-        context_memories = [
-            model.generate_context_memory(similars) for model in models
-        ]
+    context_memories = [
+        model.generate_context_memory(similars)
+        if similars is not None else None
+        for model in models
+    ]
 
     states: List[ModelState] = []
     finished_translations: List[Tuple[List[int], float]] = []
@@ -224,6 +237,8 @@ def translate_ensemble(
     translation_states = TranslationStates([[]], xp.array([0], 'f'), states, previous_words)
     for i in range(translation_limit):
         translation_states = advance_one_step(models, translation_states, finished_translations, beam_width)
+        if translation_states is None:
+            break
 
     if len(finished_translations) == 0:
         finished_translations.append(([], 0))

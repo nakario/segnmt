@@ -309,23 +309,27 @@ class Decoder(chainer.Chain):
         minibatch_size = state.shape[0]
         associated_contexts = self.context_memory[0]
         context_memory_size = associated_contexts.shape[1]
+        associated_contexts = F.broadcast_to(associated_contexts, (minibatch_size, context_memory_size, self.encoder_output_size)).array
         assert associated_contexts.shape == (
             minibatch_size,
             context_memory_size,
             self.encoder_output_size
         )
         associated_states = self.context_memory[1]
+        associated_states = F.broadcast_to(associated_states, (minibatch_size, context_memory_size, self.hidden_layer_size)).array
         assert associated_states.shape == (
             minibatch_size,
             context_memory_size,
             self.hidden_layer_size
         )
         associated_indices = self.context_memory[2]
+        associated_indices = F.broadcast_to(associated_indices, (minibatch_size, context_memory_size)).array
         assert associated_indices.shape == (
             minibatch_size,
             context_memory_size
         )
 
+        beta = F.broadcast_to(beta, (minibatch_size, context_memory_size)).array
         assert beta.shape == (minibatch_size, context_memory_size)
 
         matching_score = F.softmax(
@@ -351,9 +355,9 @@ class Decoder(chainer.Chain):
         gate = self.compute_gate(context, state, averaged_state)
         assert gate.shape == (minibatch_size,)
         if self.gate_sum is not None:
-            self.gate_sum += gate.array
+            self.gate_sum += F.sum(gate.array, axis=0).array
         else:
-            self.gate_sum = gate.array
+            self.gate_sum = F.sum(gate.array, axis=0).array
 
         flatten_indices = (
                 associated_indices +

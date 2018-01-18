@@ -55,20 +55,31 @@ class AttentionModule(chainer.Chain):
             previous_state: Variable,
             previous_embedding: Variable
     ) -> Variable:
-        minibatch_size, max_sentence_size, _ = self.encoded.shape
+        minibatch_size, _ = previous_state.shape
+        _, max_sentence_size, _ = self.encoded.shape
         assert self.precomputed
 
         state_alignment_factor = \
             self.linear_s(previous_state) + \
             self.linear_e(previous_embedding)
-        assert state_alignment_factor.shape == \
-            (minibatch_size, self.attention_layer_size)
 
+        paf = F.reshape(
+            self.linear_h(
+                F.reshape(
+                    F.broadcast_to(
+                        self.encoded,
+                        (minibatch_size, max_sentence_size, self.encoder_output_size)
+                    ),
+                    (minibatch_size * max_sentence_size, self.encoder_output_size)
+                )
+            ),
+            (minibatch_size, max_sentence_size, self.attention_layer_size)
+        )
         attention = F.softmax(F.reshape(
             self.linear_o(
                 F.reshape(
                     F.tanh(
-                        self.precomputed_alignment_factor + F.broadcast_to(
+                        paf + F.broadcast_to(
                             F.expand_dims(state_alignment_factor, axis=1),
                             (
                                 minibatch_size,
@@ -87,6 +98,6 @@ class AttentionModule(chainer.Chain):
         ))
         assert attention.shape == (minibatch_size, max_sentence_size)
 
-        context = F.sum(F.scale(self.encoded, attention, axis=0), axis=1)
+        context = F.sum(F.scale(F.broadcast_to(self.encoded, (minibatch_size, max_sentence_size, self.encoder_output_size)), attention, axis=0), axis=1)
         return context
 
